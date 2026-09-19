@@ -1,6 +1,6 @@
 venv
-processed
-uploads
+processed/
+uploads/
 __pycache__/
 .env
 .db
