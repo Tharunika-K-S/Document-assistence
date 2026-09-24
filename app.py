@@ -68,6 +68,9 @@ DOCUMENT_TYPES = {
     "Legal Heir Certificate":
         "சட்ட வாரிசுச் சான்றிதழ்",
 
+    "First Graduate Certificate":
+        "முதல் பட்டதாரி சான்றிதழ்",
+
     "Land / Property Document":
         "நிலம் / சொத்து ஆவணம்",
 
@@ -159,6 +162,19 @@ CLASSIFICATION_KEYWORDS = {
         "சட்ட வாரிசு",
         "சட்ட வாரிசுச் சான்றிதழ்",
         "இறந்தவர்"
+    ],
+
+
+    "First Graduate Certificate": [
+
+        "first graduate certificate",
+        "first graduate",
+        "first generation graduate",
+        "first generation",
+        "graduate certificate",
+        "முதல் பட்டதாரி சான்றிதழ்",
+        "முதல் பட்டதாரி",
+        "முதல் தலைமுறை பட்டதாரி"
     ],
 
 
@@ -571,7 +587,43 @@ def perform_ocr(image, psm):
                         confidence
                     )
 
-        text = " ".join(texts)
+        # Preserve OCR line structure. This is important for
+        # certificate extraction because many documents place
+        # the label on one line and the value on the next line.
+        line_map = {}
+
+        for i in range(len(data["text"])):
+            word = data["text"][i].strip()
+
+            if not word:
+                continue
+
+            try:
+                conf = float(data["conf"][i])
+            except Exception:
+                conf = -1
+
+            if conf < 0:
+                continue
+
+            block = str(data.get("block_num", ["0"] * len(data["text"]))[i])
+            paragraph = str(data.get("par_num", ["0"] * len(data["text"]))[i])
+            line = str(data.get("line_num", ["0"] * len(data["text"]))[i])
+
+            key = (block, paragraph, line)
+
+            if key not in line_map:
+                line_map[key] = []
+
+            line_map[key].append(word)
+
+        ordered_lines = [
+            " ".join(words)
+            for words in line_map.values()
+            if words
+        ]
+
+        text = "\n".join(ordered_lines)
 
         confidence = (
             sum(confidences)
@@ -681,66 +733,311 @@ def classify_document(text):
     if not text:
         return ("General Government Document", 0, [])
 
-    lower_text = text.lower()
+    lower_text = re.sub(r"\s+", " ", text.lower()).strip()
 
-    exact_phrases = [
-        ("Court Order", ["court order", "judgment", "judgement", "நீதிமன்ற உத்தரவு"]),
-        ("Birth Certificate", ["birth certificate", "பிறப்புச் சான்றிதழ்"]),
-        ("Death Certificate", ["death certificate", "இறப்புச் சான்றிதழ்"]),
-        ("Income Certificate", ["income certificate", "income certificate no", "வருமானச் சான்றிதழ்"]),
-        ("Community Certificate", ["community certificate", "caste certificate", "சமூகச் சான்றிதழ்"]),
-        ("Legal Heir Certificate", ["legal heir certificate", "heir certificate", "சட்ட வாரிசுச் சான்றிதழ்"]),
-        ("Land / Property Document", ["sale deed", "property registration", "registration deed", "land document", "property document"]),
-        ("Government Notice / Order", ["government order", "government notice", "official order", "government notification", "அரசாணை", "அரசு உத்தரவு", "அரசு அறிவிப்பு"]),
-        ("Application Form", ["application form", "விண்ணப்பப் படிவம்"])
+    # --------------------------------------------------------
+    # 1. Exact / near-exact document titles.
+    # These must win over generic words such as department,
+    # date, number, order, certificate, etc.
+    # --------------------------------------------------------
+    exact_priority = [
+        ("First Graduate Certificate", [
+            "first graduate certificate",
+            "first graduate",
+            "first generation graduate",
+            "first generation",
+            "graduate certificate",
+            "முதல் பட்டதாரி சான்றிதழ்",
+            "முதல் பட்டதாரி",
+            "முதல் தலைமுறை பட்டதாரி"
+        ]),
+        ("Income Certificate", [
+            "income certificate",
+            "income certificate no",
+            "income certificate number",
+            "வருமானச் சான்றிதழ்",
+            "வருமான சான்றிதழ்"
+        ]),
+        ("Birth Certificate", [
+            "birth certificate",
+            "பிறப்புச் சான்றிதழ்",
+            "பிறப்பு சான்றிதழ்"
+        ]),
+        ("Death Certificate", [
+            "death certificate",
+            "இறப்புச் சான்றிதழ்",
+            "இறப்பு சான்றிதழ்"
+        ]),
+        ("Community Certificate", [
+            "community certificate",
+            "சமூகச் சான்றிதழ்",
+            "சமூக சான்றிதழ்"
+        ]),
+        ("Legal Heir Certificate", [
+            "legal heir certificate",
+            "legal heirs certificate",
+            "சட்ட வாரிசுச் சான்றிதழ்",
+            "சட்ட வாரிசு சான்றிதழ்"
+        ]),
+        ("Court Order", [
+            "court order",
+            "judgment",
+            "judgement",
+            "நீதிமன்ற உத்தரவு",
+            "நீதிமன்ற தீர்ப்பு"
+        ]),
+        ("Government Notice / Order", [
+            "government order",
+            "government notice",
+            "அரசாணை",
+            "அரசு உத்தரவு",
+            "அரசு அறிவிப்பு"
+        ]),
+        ("Application Form", [
+            "application form",
+            "விண்ணப்பப் படிவம்",
+            "விண்ணப்ப படிவம்"
+        ])
     ]
 
-    for document_type, phrases in exact_phrases:
+    for document_type, phrases in exact_priority:
         for phrase in phrases:
             if phrase.lower() in lower_text:
-                return (document_type, 99.0, [phrase])
+                return (
+                    document_type,
+                    98.0,
+                    [phrase]
+                )
 
-    indicators = {
-        "Birth Certificate": ["date of birth", "place of birth", "registration of birth", "born", "பிறந்த தேதி", "பிறந்த இடம்", "பிறப்பு"],
-        "Death Certificate": ["date of death", "place of death", "deceased", "cause of death", "registration of death", "இறந்த தேதி", "இறந்த இடம்", "இறப்பு"],
-        "Income Certificate": ["annual income", "annual family income", "family income", "income", "salary", "yearly income", "ஆண்டு வருமானம்", "குடும்ப வருமானம்", "வருமானம்"],
-        "Community Certificate": ["community", "caste", "scheduled caste", "scheduled tribe", "backward class", "சமூகம்", "சாதி"],
-        "Legal Heir Certificate": ["legal heir", "legal heirs", "surviving member", "deceased person", "வாரிசு", "சட்ட வாரிசு", "இறந்தவர்"],
-        "Land / Property Document": ["survey number", "survey no", "patta", "chitta", "property", "land", "extent", "sub division", "sale deed", "sub registrar", "சர்வே எண்", "பட்டா", "சிட்டா", "நிலம்", "சொத்து", "சார் பதிவாளர்"],
-        "Government Notice / Order": ["government order", "government notice", "official order", "government notification", "proceedings", "notification", "அரசாணை", "அரசு உத்தரவு", "அரசு அறிவிப்பு", "அறிவிப்பு", "சுற்றறிக்கை"],
-        "Court Order": ["court", "high court", "district court", "supreme court", "petitioner", "respondent", "case number", "case no", "plaintiff", "defendant", "நீதிமன்றம்", "மனுதாரர்", "எதிர்மனுதாரர்", "வழக்கு எண்"],
-        "Application Form": ["application", "applicant", "application number", "signature of applicant", "விண்ணப்பம்", "விண்ணப்பதாரர்", "விண்ணப்ப எண்"]
+    # --------------------------------------------------------
+    # 2. Strong indicators.
+    # IMPORTANT:
+    # "department", "date", "number", "certificate", etc.
+    # alone are NOT classification evidence.
+    # --------------------------------------------------------
+    strong_patterns = {
+
+        "Birth Certificate": [
+            "date of birth",
+            "place of birth",
+            "birth registration",
+            "பிறந்த தேதி",
+            "பிறந்த இடம்",
+            "பிறப்பு"
+        ],
+
+        "Death Certificate": [
+            "date of death",
+            "place of death",
+            "cause of death",
+            "இறந்த தேதி",
+            "இறந்த இடம்",
+            "இறப்பு"
+        ],
+
+        "Income Certificate": [
+            "annual income",
+            "annual family income",
+            "family income",
+            "income certificate",
+            "ஆண்டு வருமானம்",
+            "குடும்ப ஆண்டு வருமானம்",
+            "வருமானம்"
+        ],
+
+        "Community Certificate": [
+            "community certificate",
+            "community",
+            "caste",
+            "scheduled caste",
+            "scheduled tribe",
+            "சமூகம்",
+            "சாதி"
+        ],
+
+        "Legal Heir Certificate": [
+            "legal heir",
+            "legal heirs",
+            "surviving member",
+            "deceased person",
+            "சட்ட வாரிசு",
+            "வாரிசுகள்",
+            "இறந்தவர்"
+        ],
+
+        "First Graduate Certificate": [
+            "first graduate",
+            "first generation graduate",
+            "graduate certificate",
+            "முதல் பட்டதாரி",
+            "முதல் தலைமுறை பட்டதாரி"
+        ],
+
+        "Land / Property Document": [
+            "survey number",
+            "survey no",
+            "patta number",
+            "patta no",
+            "sub division",
+            "sale deed",
+            "registration deed",
+            "property registration",
+            "land owner",
+            "property owner",
+            "extent",
+            "சர்வே எண்",
+            "பட்டா எண்",
+            "நிலம்",
+            "சொத்து",
+            "பரப்பளவு"
+        ],
+
+        "Government Notice / Order": [
+            "government order",
+            "government notice",
+            "proceedings",
+            "notification",
+            "official order",
+            "circular",
+            "அரசாணை",
+            "அரசு உத்தரவு",
+            "அறிவிப்பு",
+            "சுற்றறிக்கை"
+        ],
+
+        "Court Order": [
+            "petitioner",
+            "respondent",
+            "case number",
+            "case no",
+            "plaintiff",
+            "defendant",
+            "judge",
+            "disposed",
+            "dismissed",
+            "interim order",
+            "final order",
+            "நீதிமன்றம்",
+            "நீதிபதி",
+            "மனுதாரர்",
+            "எதிர்மனுதாரர்",
+            "வழக்கு எண்",
+            "தீர்ப்பு"
+        ],
+
+        "Application Form": [
+            "application form",
+            "applicant name",
+            "application number",
+            "signature",
+            "mobile number",
+            "விண்ணப்பதாரர்",
+            "கையொப்பம்"
+        ]
     }
 
-    matches_by_type = {}
     scores = {}
+    matches_by_type = {}
 
-    for document_type, keywords in indicators.items():
-        matches = [k for k in keywords if k.lower() in lower_text]
-        matches_by_type[document_type] = matches
+    for document_type, patterns in strong_patterns.items():
+        matches = []
+
+        for pattern in patterns:
+            if pattern.lower() in lower_text:
+                matches.append(pattern)
+
         scores[document_type] = len(matches)
+        matches_by_type[document_type] = matches
 
-    income_matches = matches_by_type["Income Certificate"]
-    land_matches = matches_by_type["Land / Property Document"]
+    # --------------------------------------------------------
+    # Certificate-specific priority.
+    # --------------------------------------------------------
+    first_grad_score = scores.get("First Graduate Certificate", 0)
+    income_score = scores.get("Income Certificate", 0)
+    community_score = scores.get("Community Certificate", 0)
+    legal_heir_score = scores.get("Legal Heir Certificate", 0)
 
-    if len(income_matches) >= 2:
-        return ("Income Certificate", round(min(75 + len(income_matches) * 4, 95), 2), income_matches)
+    if first_grad_score >= 1:
+        return (
+            "First Graduate Certificate",
+            round(min(88 + first_grad_score * 3, 97), 2),
+            matches_by_type["First Graduate Certificate"]
+        )
 
-    if len(land_matches) >= 2:
-        return ("Land / Property Document", round(min(70 + len(land_matches) * 5, 95), 2), land_matches)
+    if income_score >= 2:
+        return (
+            "Income Certificate",
+            round(min(88 + income_score * 3, 98), 2),
+            matches_by_type["Income Certificate"]
+        )
 
-    court_matches = matches_by_type["Court Order"]
-    if len(court_matches) >= 2:
-        return ("Court Order", round(min(70 + len(court_matches) * 4, 95), 2), court_matches)
+    if community_score >= 2:
+        return (
+            "Community Certificate",
+            round(min(82 + community_score * 3, 97), 2),
+            matches_by_type["Community Certificate"]
+        )
 
-    if not scores or max(scores.values()) == 0:
-        return ("General Government Document", 0, [])
+    if legal_heir_score >= 2:
+        return (
+            "Legal Heir Certificate",
+            round(min(82 + legal_heir_score * 3, 97), 2),
+            matches_by_type["Legal Heir Certificate"]
+        )
 
-    best_type = max(scores, key=scores.get)
-    best_matches = matches_by_type[best_type]
-    confidence = min((len(best_matches) / max(len(indicators[best_type]), 1)) * 100, 90)
+    # Land requires two property-specific indicators.
+    land_score = scores.get("Land / Property Document", 0)
 
-    return (best_type, round(confidence, 2), best_matches)
+    if land_score >= 2:
+        return (
+            "Land / Property Document",
+            round(min(82 + land_score * 3, 97), 2),
+            matches_by_type["Land / Property Document"]
+        )
+
+    # Court requires two legal indicators.
+    court_score = scores.get("Court Order", 0)
+
+    if court_score >= 2:
+        return (
+            "Court Order",
+            round(min(82 + court_score * 3, 97), 2),
+            matches_by_type["Court Order"]
+        )
+
+    # Government Notice / Order requires two specific indicators.
+    notice_score = scores.get("Government Notice / Order", 0)
+
+    if notice_score >= 2:
+        return (
+            "Government Notice / Order",
+            round(min(78 + notice_score * 3, 95), 2),
+            matches_by_type["Government Notice / Order"]
+        )
+
+    # Birth/Death can be recognized with two indicators.
+    for doc_type in ["Birth Certificate", "Death Certificate"]:
+        score = scores.get(doc_type, 0)
+
+        if score >= 2:
+            return (
+                doc_type,
+                round(min(82 + score * 3, 97), 2),
+                matches_by_type[doc_type]
+            )
+
+    # Application needs at least two indicators.
+    application_score = scores.get("Application Form", 0)
+
+    if application_score >= 2:
+        return (
+            "Application Form",
+            round(min(75 + application_score * 4, 94), 2),
+            matches_by_type["Application Form"]
+        )
+
+    # Do not classify a document from one generic keyword.
+    return ("General Government Document", 35.0, [])
 
 
 # ============================================================
@@ -835,284 +1132,423 @@ def extract_dates(text):
 # GENERAL FIELD EXTRACTION
 # ============================================================
 
-def extract_general_fields(
-    text,
-    document_type
-):
+def first_match_multiline(patterns, text):
+    """Match label:value on one line or label on one line + value on next line."""
+    result = first_match(patterns, text)
+    if result != NOT_DETECTED:
+        return result
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+
+    for i, line in enumerate(lines):
+        for pattern in patterns:
+            # Convert a label regex into a label-only test.
+            try:
+                label_pattern = pattern.split(r"\s*[:\-]\s*")[0]
+                if re.search(label_pattern, line, flags=re.IGNORECASE):
+                    if i + 1 < len(lines):
+                        next_line = clean_extracted_value(lines[i + 1])
+                        if next_line and len(next_line) < 300:
+                            return next_line
+            except Exception:
+                continue
+
+    return NOT_DETECTED
+
+
+def extract_general_fields(text, document_type):
 
     fields = {}
 
     if document_type == "Birth Certificate":
-
-        fields["Name"] = first_match(
-            [
-                r"(?:Name of Child|Child Name|Name)\s*[:\-]\s*(.+)",
-                r"(?:பெயர்|குழந்தையின் பெயர்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Father's Name"] = first_match(
-            [
-                r"(?:Father(?:'s)? Name|Father Name)\s*[:\-]\s*(.+)",
-                r"(?:தந்தையின் பெயர்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Mother's Name"] = first_match(
-            [
-                r"(?:Mother(?:'s)? Name|Mother Name)\s*[:\-]\s*(.+)",
-                r"(?:தாயின் பெயர்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Date of Birth"] = first_match(
-            [
-                r"(?:Date of Birth|DOB)\s*[:\-]\s*(.+)",
-                r"(?:பிறந்த தேதி)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Place of Birth"] = first_match(
-            [
-                r"(?:Place of Birth)\s*[:\-]\s*(.+)",
-                r"(?:பிறந்த இடம்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
+        fields["Name"] = first_match_multiline([
+            r"(?:Name of Child|Child Name|Name)\s*[:\-]\s*(.+)",
+            r"(?:பெயர்|குழந்தையின் பெயர்)\s*[:\-]\s*(.+)"
+        ], text)
+        fields["Father's Name"] = first_match_multiline([
+            r"(?:Father(?:'s)? Name|Father Name)\s*[:\-]\s*(.+)",
+            r"(?:தந்தையின் பெயர்)\s*[:\-]\s*(.+)"
+        ], text)
+        fields["Mother's Name"] = first_match_multiline([
+            r"(?:Mother(?:'s)? Name|Mother Name)\s*[:\-]\s*(.+)",
+            r"(?:தாயின் பெயர்)\s*[:\-]\s*(.+)"
+        ], text)
+        fields["Date of Birth"] = first_match_multiline([
+            r"(?:Date of Birth|DOB)\s*[:\-]?\s*(.+)",
+            r"(?:பிறந்த தேதி)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Place of Birth"] = first_match_multiline([
+            r"(?:Place of Birth)\s*[:\-]?\s*(.+)",
+            r"(?:பிறந்த இடம்)\s*[:\-]?\s*(.+)"
+        ], text)
 
     elif document_type == "Death Certificate":
-
-        fields["Name of Deceased"] = first_match(
-            [
-                r"(?:Name of Deceased|Deceased Person|Name)\s*[:\-]\s*(.+)",
-                r"(?:இறந்தவரின் பெயர்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Date of Death"] = first_match(
-            [
-                r"(?:Date of Death|DOD)\s*[:\-]\s*(.+)",
-                r"(?:இறந்த தேதி)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Place of Death"] = first_match(
-            [
-                r"(?:Place of Death)\s*[:\-]\s*(.+)",
-                r"(?:இறந்த இடம்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
+        fields["Name of Deceased"] = first_match_multiline([
+            r"(?:Name of Deceased|Deceased Person|Name)\s*[:\-]?\s*(.+)",
+            r"(?:இறந்தவரின் பெயர்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Father / Husband Name"] = first_match_multiline([
+            r"(?:Father(?:'s)? Name|Husband Name|Father / Husband Name)\s*[:\-]?\s*(.+)",
+            r"(?:தந்தை / கணவர் பெயர்|தந்தையின் பெயர்|கணவர் பெயர்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Date of Death"] = first_match_multiline([
+            r"(?:Date of Death|DOD)\s*[:\-]?\s*(.+)",
+            r"(?:இறந்த தேதி)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Place of Death"] = first_match_multiline([
+            r"(?:Place of Death)\s*[:\-]?\s*(.+)",
+            r"(?:இறந்த இடம்)\s*[:\-]?\s*(.+)"
+        ], text)
 
     elif document_type == "Income Certificate":
-
-        fields["Name"] = first_match(
-            [
-                r"(?:Applicant Name|Name of Applicant|Name)\s*[:\-]?\s*(.+)",
-                r"(?:விண்ணப்பதாரர் பெயர்|விண்ணப்பதாரரின் பெயர்|பெயர்)\s*[:\-]?\s*(.+)"
-            ], text
-        )
-
-        fields["Father / Husband Name"] = first_match(
-            [
-                r"(?:Father / Husband Name|Father's Name|Father Name|Husband Name|Father/Husband Name)\s*[:\-]?\s*(.+)",
-                r"(?:தந்தை / கணவர் பெயர்|தந்தையின் பெயர்|தந்தை பெயர்|கணவர் பெயர்)\s*[:\-]?\s*(.+)"
-            ], text
-        )
-
-        fields["Annual Income"] = first_match(
-            [
-                r"(?:Annual Family Income|Annual Income|Yearly Income|Family Income|Income)\s*[:\-]?\s*(.+)",
-                r"(?:குடும்ப ஆண்டு வருமானம்|ஆண்டு குடும்ப வருமானம்|ஆண்டு வருமானம்|குடும்ப வருமானம்|வருமானம்)\s*[:\-]?\s*(.+)"
-            ], text
-        )
-
-        fields["Address"] = first_match(
-            [
-                r"(?:Permanent Address|Residential Address|Address)\s*[:\-]?\s*(.+)",
-                r"(?:நிரந்தர முகவரி|வசிப்பிட முகவரி|முகவரி)\s*[:\-]?\s*(.+)"
-            ], text
-        )
-
-        fields["District"] = first_match(
-            [
-                r"(?:District Name|District)\s*[:\-]?\s*(.+)",
-                r"(?:மாவட்டத்தின் பெயர்|மாவட்டம்)\s*[:\-]?\s*(.+)"
-            ], text
-        )
-
-        fields["Certificate Number"] = first_match(
-            [
-                r"(?:Income Certificate No\.?|Certificate No\.?|Certificate Number|Application No\.?|Application Number)\s*[:\-]?\s*(.+)",
-                r"(?:வருமானச் சான்றிதழ் எண்|சான்றிதழ் எண்|விண்ணப்ப எண்)\s*[:\-]?\s*(.+)"
-            ], text
-        )
+        fields["Name"] = first_match_multiline([
+            r"(?:Applicant Name|Name of Applicant|Name)\s*[:\-]?\s*(.+)",
+            r"(?:விண்ணப்பதாரர் பெயர்|பெயர்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Father / Husband Name"] = first_match_multiline([
+            r"(?:Father / Husband Name|Father(?:'s)? Name|Husband Name)\s*[:\-]?\s*(.+)",
+            r"(?:தந்தை / கணவர் பெயர்|தந்தையின் பெயர்|கணவர் பெயர்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Annual Income"] = first_match_multiline([
+            r"(?:Annual Family Income|Annual Income|Family Income|Income)\s*[:\-]?\s*(.+)",
+            r"(?:குடும்ப ஆண்டு வருமானம்|ஆண்டு வருமானம்|வருமானம்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Address"] = first_match_multiline([
+            r"(?:Applicant Address|Address)\s*[:\-]?\s*(.+)",
+            r"(?:விண்ணப்பதாரர் முகவரி|முகவரி)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["District"] = first_match_multiline([
+            r"(?:District)\s*[:\-]?\s*(.+)",
+            r"(?:மாவட்டம்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Certificate Number"] = first_match_multiline([
+            r"(?:Income Certificate No\.?|Income Certificate Number|Certificate No\.?|Certificate Number)\s*[:\-]?\s*(.+)",
+            r"(?:வருமானச் சான்றிதழ் எண்|சான்றிதழ் எண்)\s*[:\-]?\s*(.+)"
+        ], text)
 
     elif document_type == "Community Certificate":
-
-        fields["Name"] = first_match(
-            [
-                r"(?:Name)\s*[:\-]\s*(.+)",
-                r"(?:பெயர்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Community"] = first_match(
-            [
-                r"(?:Community|Caste)\s*[:\-]\s*(.+)",
-                r"(?:சமூகம்|சாதி)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
+        fields["Name"] = first_match_multiline([
+            r"(?:Name|Applicant Name)\s*[:\-]?\s*(.+)",
+            r"(?:பெயர்|விண்ணப்பதாரர் பெயர்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Father / Mother Name"] = first_match_multiline([
+            r"(?:Father(?:'s)? Name|Mother(?:'s)? Name|Father / Mother Name)\s*[:\-]?\s*(.+)",
+            r"(?:தந்தையின் பெயர்|தாயின் பெயர்|தந்தை / தாய் பெயர்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Community"] = first_match_multiline([
+            r"(?:Community)\s*[:\-]?\s*(.+)",
+            r"(?:சமூகம்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Caste"] = first_match_multiline([
+            r"(?:Caste)\s*[:\-]?\s*(.+)",
+            r"(?:சாதி)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Address"] = first_match_multiline([
+            r"(?:Address)\s*[:\-]?\s*(.+)",
+            r"(?:முகவரி)\s*[:\-]?\s*(.+)"
+        ], text)
 
     elif document_type == "Legal Heir Certificate":
+        fields["Deceased Person"] = first_match_multiline([
+            r"(?:Deceased Person|Name of Deceased|Deceased Name)\s*[:\-]?\s*(.+)",
+            r"(?:இறந்தவர்|இறந்தவரின் பெயர்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Legal Heirs"] = first_match_multiline([
+            r"(?:Legal Heirs|Legal Heir|Names of Legal Heirs)\s*[:\-]?\s*(.+)",
+            r"(?:சட்ட வாரிசுகள்|சட்ட வாரிசு|வாரிசுகள்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Relationship"] = first_match_multiline([
+            r"(?:Relationship|Relation)\s*[:\-]?\s*(.+)",
+            r"(?:உறவு)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Address"] = first_match_multiline([
+            r"(?:Address)\s*[:\-]?\s*(.+)",
+            r"(?:முகவரி)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Certificate Number"] = first_match_multiline([
+            r"(?:Certificate No\.?|Certificate Number|Legal Heir Certificate No\.?)\s*[:\-]?\s*(.+)",
+            r"(?:சான்றிதழ் எண்)\s*[:\-]?\s*(.+)"
+        ], text)
 
-        fields["Deceased Person"] = first_match(
-            [
-                r"(?:Deceased Person|Name of Deceased)\s*[:\-]\s*(.+)",
-                r"(?:இறந்தவர்|இறந்தவரின் பெயர்)\s*[:\-]\s*(.+)"
-            ],
-            text
+    elif document_type == "First Graduate Certificate":
+
+        # ----------------------------------------------------
+        # First Graduate certificates often contain the
+        # important values inside a long sentence rather than
+        # in simple "Label: Value" lines.  Use semantic
+        # anchors before generic label matching.
+        # ----------------------------------------------------
+        flat_text = re.sub(r"\s+", " ", text).strip()
+
+        # Applicant:
+        # "This is to certify that Smt K S Tharunika daughter of ..."
+        applicant = NOT_DETECTED
+        m = re.search(
+            r"(?:this\s+is\s+to\s+certify\s+that|certify\s+that)\s+"
+            r"(?:smt\.?|smti\.?|ms\.?|miss|mr\.?|thiru\.?)?\s*"
+            r"([A-Za-z][A-Za-z .]{2,80}?)\s+"
+            r"(?:daughter|son|wife|husband|child)\s+of\b",
+            flat_text,
+            flags=re.IGNORECASE
         )
+        if m:
+            applicant = clean_extracted_value(m.group(1))
 
-        fields["Legal Heirs"] = first_match(
-            [
-                r"(?:Legal Heirs|Legal Heir)\s*[:\-]\s*(.+)",
-                r"(?:சட்ட வாரிசுகள்|வாரிசுகள்)\s*[:\-]\s*(.+)"
-            ],
-            text
+        if applicant == NOT_DETECTED:
+            applicant = first_match_multiline([
+                r"(?:Applicant Name|Name of Applicant|Student Name)\s*[:\-]?\s*(.+)",
+                r"(?:விண்ணப்பதாரர் பெயர்|மாணவர் பெயர்)\s*[:\-]?\s*(.+)"
+            ], text)
+
+        fields["Applicant Name"] = applicant
+
+        # Father / parent:
+        # "daughter of Thiru Subaraj residing at ..."
+        parent = NOT_DETECTED
+        m = re.search(
+            r"(?:daughter|son|wife|husband|child)\s+of\s+"
+            r"((?:thiru|mr\.?|mrs\.?|sri\.?|smt\.?)?\s*"
+            r"[A-Za-z][A-Za-z .]{2,80}?)\s+"
+            r"(?:residing|aged|of\s+|having|from)\b",
+            flat_text,
+            flags=re.IGNORECASE
         )
+        if m:
+            parent = clean_extracted_value(m.group(1))
 
+        if parent == NOT_DETECTED:
+            parent = first_match_multiline([
+                r"(?:Father(?:'s)? Name|Mother(?:'s)? Name|Parent(?:'s)? Name|Father / Mother Name)\s*[:\-]?\s*(.+)",
+                r"(?:தந்தையின் பெயர்|தாயின் பெயர்|பெற்றோர் பெயர்|தந்தை / தாய் பெயர்)\s*[:\-]?\s*(.+)"
+            ], text)
+
+        fields["Father / Mother Name"] = parent
+
+        # Certificate number: capture only the identifier token,
+        # not the following "/ Date: ..."
+        certificate_no = NOT_DETECTED
+        m = re.search(
+            r"(?:Certificate\s*(?:No|Number)|Cert\.?\s*No\.?)"
+            r"\s*[:\-]?\s*([A-Za-z0-9][A-Za-z0-9./_-]{4,})",
+            flat_text,
+            flags=re.IGNORECASE
+        )
+        if m:
+            certificate_no = m.group(1).strip(".,;")
+
+        if certificate_no == NOT_DETECTED:
+            certificate_no = first_match_multiline([
+                r"(?:முதல் பட்டதாரி சான்றிதழ் எண்|சான்றிதழ் எண்)\s*[:\-]?\s*(.+)"
+            ], text)
+
+        # Remove an accidental date suffix if OCR attached it.
+        certificate_no = re.split(
+            r"\s*(?:/|\||,)?\s*(?:Date|Dated|தேதி)\s*[:\-]?",
+            certificate_no,
+            maxsplit=1,
+            flags=re.IGNORECASE
+        )[0].strip()
+
+        fields["Certificate Number"] = certificate_no
+
+        # Certificate issue date: prefer a date immediately after
+        # the certificate number line / Date label.
+        issue_date = NOT_DETECTED
+        date_match = re.search(
+            r"(?:Certificate\s*(?:No|Number)[^.\n]{0,100}?"
+            r"(?:/|\||,)\s*)?"
+            r"(?:Date|Dated|Certificate Date|Issue Date|Date of Certificate)"
+            r"\s*[:\-]?\s*"
+            r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})",
+            flat_text,
+            flags=re.IGNORECASE
+        )
+        if date_match:
+            issue_date = date_match.group(1)
+
+        if issue_date == NOT_DETECTED:
+            issue_date = first_match_multiline([
+                r"(?:Certificate Date|Date of Certificate|Issue Date)\s*[:\-]?\s*(.+)",
+                r"(?:சான்றிதழ் தேதி|வழங்கிய தேதி)\s*[:\-]?\s*(.+)"
+            ], text)
+
+        fields["Date"] = issue_date
+
+        # Address:
+        # "residing at Door No... ... Coimbatore District ..."
+        address = NOT_DETECTED
+        m = re.search(
+            r"\bresiding\s+at\s+(.+?)(?=\s+[A-Za-z][A-Za-z ]{2,40}\s+District\b"
+            r"|\s+District\b)",
+            flat_text,
+            flags=re.IGNORECASE
+        )
+        if m:
+            address = clean_extracted_value(m.group(1))
+
+        if address == NOT_DETECTED:
+            address = first_match_multiline([
+                r"(?:Applicant Address|Permanent Address|Address)\s*[:\-]?\s*(.+)",
+                r"(?:விண்ணப்பதாரர் முகவரி|நிரந்தர முகவரி|முகவரி)\s*[:\-]?\s*(.+)"
+            ], text)
+
+        fields["Address"] = address
+
+        # District:
+        # Prefer "Coimbatore District of the State of Tamil Nadu"
+        district = NOT_DETECTED
+        m = re.search(
+            r"\b([A-Za-z][A-Za-z'-]*(?:\s+[A-Za-z][A-Za-z'-]*){0,2})\s+District\b"
+            r"(?:\s+of\s+the\s+State)?",
+            flat_text,
+            flags=re.IGNORECASE
+        )
+        if m:
+            district = clean_extracted_value(m.group(1))
+
+        if district == NOT_DETECTED:
+            district = first_match_multiline([
+                r"(?:District|District Name)\s*[:\-]?\s*([A-Za-z][A-Za-z .'-]{2,60})",
+                r"(?:மாவட்டம்)\s*[:\-]?\s*(.+)"
+            ], text)
+
+        # Avoid returning a whole sentence as the district.
+        district = re.sub(
+            r"\s+(?:of\s+the\s+State|of\s+Tamil\s+Nadu|District)\b.*$",
+            "",
+            district,
+            flags=re.IGNORECASE
+        ).strip(" ,.-")
+
+        fields["District"] = district or NOT_DETECTED
+
+        # Taluk:
+        taluk = NOT_DETECTED
+        m = re.search(
+            r"\bTaluk\s+(?:of\s+)?([A-Za-z][A-Za-z'-]*(?:\s+[A-Za-z][A-Za-z'-]*){0,3})"
+            r"(?=\s+(?:District|of\s+the\s+State|Village|$)|\s*[.,;])",
+            flat_text,
+            flags=re.IGNORECASE
+        )
+        if m:
+            taluk = clean_extracted_value(m.group(1))
+
+        if taluk == NOT_DETECTED:
+            taluk = first_match_multiline([
+                r"(?:Taluk|Taluk Name)\s*[:\-]?\s*(.+)",
+                r"(?:வட்டம்)\s*[:\-]?\s*(.+)"
+            ], text)
+
+        fields["Taluk"] = taluk
+
+        # Village:
+        village = NOT_DETECTED
+        m = re.search(
+            r"(?:Village\s+of|village\s+of)\s+"
+            r"([A-Za-z][A-Za-z .'-]{2,60}?)(?=\s+(?:Taluk|District|of\s+Pollachi|$))",
+            flat_text,
+            flags=re.IGNORECASE
+        )
+        if m:
+            village = clean_extracted_value(m.group(1))
+
+        if village == NOT_DETECTED:
+            village = first_match_multiline([
+                r"(?:Village|Village Name)\s*[:\-]?\s*(.+)",
+                r"(?:கிராமம்)\s*[:\-]?\s*(.+)"
+            ], text)
+
+        fields["Village"] = village
+
+        # Educational qualification:
+        qualification = first_match_multiline([
+            r"(?:Educational Qualification)\s*[:\-]?\s*(.+)",
+            r"(?:கல்வித் தகுதி|கல்வி தகுதி)\s*[:\-]?\s*(.+)"
+        ], text)
+
+        if qualification == NOT_DETECTED:
+            # Common values appearing in the certificate table.
+            m = re.search(
+                r"\b(10th\s*(?:or|/)\s*12th\s*Standard|"
+                r"10th\s*Standard|12th\s*Standard|"
+                r"Less\s+than\s+10th\s+standard)\b",
+                flat_text,
+                flags=re.IGNORECASE
+            )
+            if m:
+                qualification = clean_extracted_value(m.group(1))
+
+        fields["Educational Qualification"] = qualification
 
     elif document_type == "Land / Property Document":
-
-        fields["Owner Name"] = first_match(
-            [
-                r"(?:Owner Name|Name of Owner)\s*[:\-]\s*(.+)",
-                r"(?:உரிமையாளர் பெயர்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Survey Number"] = first_match(
-            [
-                r"(?:Survey Number|Survey No\.?)\s*[:\-]?\s*(.+)",
-                r"(?:சர்வே எண்)\s*[:\-]?\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Patta Number"] = first_match(
-            [
-                r"(?:Patta Number|Patta No\.?)\s*[:\-]?\s*(.+)",
-                r"(?:பட்டா எண்)\s*[:\-]?\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Village"] = first_match(
-            [
-                r"(?:Village)\s*[:\-]\s*(.+)",
-                r"(?:கிராமம்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Taluk"] = first_match(
-            [
-                r"(?:Taluk)\s*[:\-]\s*(.+)",
-                r"(?:வட்டம்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["District"] = first_match(
-            [
-                r"(?:District)\s*[:\-]\s*(.+)",
-                r"(?:மாவட்டம்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
+        fields["Owner Name"] = first_match_multiline([
+            r"(?:Owner Name|Name of Owner|Property Owner)\s*[:\-]?\s*(.+)",
+            r"(?:உரிமையாளர் பெயர்|சொத்து உரிமையாளர்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Survey Number"] = first_match_multiline([
+            r"(?:Survey Number|Survey No\.?)\s*[:\-]?\s*(.+)",
+            r"(?:சர்வே எண்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Patta Number"] = first_match_multiline([
+            r"(?:Patta Number|Patta No\.?)\s*[:\-]?\s*(.+)",
+            r"(?:பட்டா எண்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Village"] = first_match_multiline([
+            r"(?:Village)\s*[:\-]?\s*(.+)",
+            r"(?:கிராமம்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Taluk"] = first_match_multiline([
+            r"(?:Taluk)\s*[:\-]?\s*(.+)",
+            r"(?:வட்டம்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["District"] = first_match_multiline([
+            r"(?:District)\s*[:\-]?\s*(.+)",
+            r"(?:மாவட்டம்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Extent"] = first_match_multiline([
+            r"(?:Extent|Land Extent|Area)\s*[:\-]?\s*(.+)",
+            r"(?:பரப்பளவு|நிலப்பரப்பு)\s*[:\-]?\s*(.+)"
+        ], text)
 
     elif document_type == "Government Notice / Order":
-
-        fields["Order / Notice Number"] = first_match(
-            [
-                r"(?:Order No\.?|Order Number|Notice No\.?|Notice Number)\s*[:\-]?\s*(.+)",
-                r"(?:உத்தரவு எண்|அறிவிப்பு எண்)\s*[:\-]?\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Department"] = first_match(
-            [
-                r"(?:Department)\s*[:\-]\s*(.+)",
-                r"(?:துறை)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Subject"] = first_match(
-            [
-                r"(?:Subject)\s*[:\-]\s*(.+)",
-                r"(?:பொருள்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
+        fields["Order / Notice Number"] = first_match_multiline([
+            r"(?:Government Order No\.?|G\.?O\.?\s*No\.?|Order No\.?|Order Number|Notice No\.?|Notice Number)\s*[:\-]?\s*(.+)",
+            r"(?:உத்தரவு எண்|அறிவிப்பு எண்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Department"] = first_match_multiline([
+            r"(?:Department|Department Name)\s*[:\-]?\s*(.+)",
+            r"(?:துறை)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Subject"] = first_match_multiline([
+            r"(?:Subject|Sub)\s*[:\-]?\s*(.+)",
+            r"(?:பொருள்)\s*[:\-]?\s*(.+)"
+        ], text)
 
     elif document_type == "Application Form":
-
-        fields["Applicant Name"] = first_match(
-            [
-                r"(?:Applicant Name|Name of Applicant|Name)\s*[:\-]\s*(.+)",
-                r"(?:விண்ணப்பதாரர் பெயர்|பெயர்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-        fields["Address"] = first_match(
-            [
-                r"(?:Address)\s*[:\-]\s*(.+)",
-                r"(?:முகவரி)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
+        fields["Applicant Name"] = first_match_multiline([
+            r"(?:Applicant Name|Name of Applicant|Name)\s*[:\-]?\s*(.+)",
+            r"(?:விண்ணப்பதாரர் பெயர்|பெயர்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Application Number"] = first_match_multiline([
+            r"(?:Application No\.?|Application Number|Application ID)\s*[:\-]?\s*(.+)",
+            r"(?:விண்ணப்ப எண்|விண்ணப்ப அடையாள எண்)\s*[:\-]?\s*(.+)"
+        ], text)
+        fields["Address"] = first_match_multiline([
+            r"(?:Applicant Address|Address)\s*[:\-]?\s*(.+)",
+            r"(?:விண்ணப்பதாரர் முகவரி|முகவரி)\s*[:\-]?\s*(.+)"
+        ], text)
 
     else:
-
-        fields["Name"] = first_match(
-            [
-                r"(?:Name)\s*[:\-]\s*(.+)",
-                r"(?:பெயர்)\s*[:\-]\s*(.+)"
-            ],
-            text
-        )
-
-
-    # Common fields
+        fields["Name"] = first_match_multiline([
+            r"(?:Name|Applicant Name)\s*[:\-]?\s*(.+)",
+            r"(?:பெயர்|விண்ணப்பதாரர் பெயர்)\s*[:\-]?\s*(.+)"
+        ], text)
 
     dates = extract_dates(text)
-
-    fields["Dates"] = (
-        ", ".join(dates[:5])
-        if dates
-        else NOT_DETECTED
-    )
+    fields["Dates"] = ", ".join(dates[:5]) if dates else NOT_DETECTED
 
     return fields
+
 
 
 # ============================================================
@@ -1769,14 +2205,14 @@ def simplify_court_order(text):
     if petitioner != NOT_DETECTED:
 
         tamil_summary.append(
-            f"மனுதாரர் / Plaintiff தகவல்: {petitioner}."
+            f"மனுதாரர் தகவல்: {petitioner}."
         )
 
 
     if respondent != NOT_DETECTED:
 
         tamil_summary.append(
-            f"எதிர்மனுதாரர் / Defendant தகவல்: {respondent}."
+            f"எதிர்மனுதாரர் தகவல்: {respondent}."
         )
 
 
@@ -1789,14 +2225,14 @@ def simplify_court_order(text):
     else:
 
         tamil_summary.append(
-            "OCR text அடிப்படையில் இறுதி முடிவு தெளிவாக கண்டறியப்படவில்லை."
+            "பெறப்பட்ட உரையின் அடிப்படையில் இறுதி முடிவு தெளிவாக கண்டறியப்படவில்லை."
         )
 
 
     if important_points:
 
         tamil_summary.append(
-            "முக்கியமான உத்தரவு தொடர்பான வரிகள் கீழே OCR text அடிப்படையில் காட்டப்பட்டுள்ளன."
+            "முக்கியமான உத்தரவு தொடர்பான வரிகள் கீழே பெறப்பட்ட உரையின் அடிப்படையில் காட்டப்பட்டுள்ளன."
         )
 
     else:
@@ -1844,34 +2280,59 @@ def simplify_court_order(text):
 # BILINGUAL FIELD LABELS
 # ============================================================
 
-FIELD_LABELS_TA = {
-    "Name": "பெயர்", "Father's Name": "தந்தையின் பெயர்", "Mother's Name": "தாயின் பெயர்",
-    "Father / Husband Name": "தந்தை / கணவர் பெயர்", "Owner Name": "உரிமையாளர் பெயர்",
-    "Applicant Name": "விண்ணப்பதாரர் பெயர்", "Deceased Person": "இறந்த நபர்",
-    "Name of Deceased": "இறந்தவரின் பெயர்", "Legal Heirs": "சட்ட வாரிசுகள்",
-    "Date of Birth": "பிறந்த தேதி", "Date of Death": "இறந்த தேதி",
-    "Place of Birth": "பிறந்த இடம்", "Place of Death": "இறந்த இடம்",
-    "Annual Income": "ஆண்டு வருமானம்", "Community": "சமூகம்", "Caste": "சாதி",
-    "Survey Number": "சர்வே எண்", "Patta Number": "பட்டா எண்", "Village": "கிராமம்",
-    "Taluk": "வட்டம்", "District": "மாவட்டம்", "Address": "முகவரி",
-    "Certificate Number": "சான்றிதழ் எண்", "Document Number": "ஆவண எண்",
-    "Order / Notice Number": "உத்தரவு / அறிவிப்பு எண்", "Department": "துறை",
-    "Subject": "பொருள்", "Dates": "தேதிகள்", "Amounts": "தொகைகள்",
-    "Case Number": "வழக்கு எண்", "Court Name": "நீதிமன்றம்", "Judge": "நீதிபதி",
-    "Order Date": "உத்தரவு தேதி", "Petitioner": "மனுதாரர்", "Respondent": "எதிர்மனுதாரர்",
-    "Outcome": "முடிவு", "Important Points": "முக்கியமான அம்சங்கள்"
+FIELD_LABEL_TAMIL = {
+    "Name": "பெயர்",
+    "Father's Name": "தந்தையின் பெயர்",
+    "Mother's Name": "தாயின் பெயர்",
+    "Father / Husband Name": "தந்தை / கணவர் பெயர்",
+    "Father / Mother Name": "தந்தை / தாய் பெயர்",
+    "Date of Birth": "பிறந்த தேதி",
+    "Place of Birth": "பிறந்த இடம்",
+    "Name of Deceased": "இறந்தவரின் பெயர்",
+    "Date of Death": "இறந்த தேதி",
+    "Place of Death": "இறந்த இடம்",
+    "Annual Income": "ஆண்டு வருமானம்",
+    "Address": "முகவரி",
+    "District": "மாவட்டம்",
+    "Certificate Number": "சான்றிதழ் எண்",
+    "Community": "சமூகம்",
+    "Caste": "சாதி",
+    "Deceased Person": "இறந்த நபர்",
+    "Legal Heirs": "சட்ட வாரிசுகள்",
+    "Relationship": "உறவு",
+    "Owner Name": "உரிமையாளர் பெயர்",
+    "Survey Number": "சர்வே எண்",
+    "Patta Number": "பட்டா எண்",
+    "Village": "கிராமம்",
+    "Taluk": "வட்டம்",
+    "Extent": "பரப்பளவு",
+    "Order / Notice Number": "உத்தரவு / அறிவிப்பு எண்",
+    "Department": "துறை",
+    "Subject": "பொருள்",
+    "Applicant Name": "விண்ணப்பதாரர் பெயர்",
+    "Application Number": "விண்ணப்ப எண்",
+    "Educational Qualification": "கல்வித் தகுதி",
+    "Date": "தேதி",
+    "Case Number": "வழக்கு எண்",
+    "Court Name": "நீதிமன்றம்",
+    "Judge": "நீதிபதி",
+    "Order Date": "உத்தரவு தேதி",
+    "Petitioner": "மனுதாரர்",
+    "Respondent": "எதிர்மனுதாரர்",
+    "Outcome": "முடிவு",
+    "Important Points": "முக்கிய அம்சங்கள்",
+    "Dates": "தேதிகள்"
 }
 
 
-def build_bilingual_fields(fields):
+def build_fields_i18n(fields):
     return [
         {
-            "key": key,
             "label_en": key,
-            "label_ta": FIELD_LABELS_TA.get(key, key),
+            "label_ta": FIELD_LABEL_TAMIL.get(key, key),
             "value": value
         }
-        for key, value in fields.items()
+        for key, value in (fields or {}).items()
     ]
 
 
@@ -2156,7 +2617,7 @@ def process_document(
             fields,
 
         "fields_i18n":
-            build_bilingual_fields(fields),
+            build_fields_i18n(fields),
 
         "court_order":
             court_order

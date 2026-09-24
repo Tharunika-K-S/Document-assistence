@@ -1,2358 +1,433 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Government Document Assistant</title>
-
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        * { box-sizing: border-box; }
         body {
-            font-family:
-                "Segoe UI",
-                "Noto Sans Tamil",
-                Arial,
-                sans-serif;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #eef4ff,
-                    #f8fbff,
-                    #eef7f5
-                );
-
-            min-height: 100vh;
-            color: #1f2937;
+            margin: 0;
+            font-family: "Segoe UI", "Noto Sans Tamil", Arial, sans-serif;
+            background: linear-gradient(135deg, #eef4ff, #f8fbff);
+            color: #172033;
         }
-
-        /* ================================
-           HEADER
-        ================================= */
-
-        header {
-            background: linear-gradient(
-                135deg,
-                #0f172a,
-                #1e3a8a
-            );
-
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: linear-gradient(90deg, #101d45, #21469d);
             color: white;
-            padding: 25px 20px;
-
-            box-shadow:
-                0 8px 25px rgba(0, 0, 0, 0.15);
+            padding: 14px 20px;
+            box-shadow: 0 3px 14px rgba(0,0,0,.16);
         }
-
-        .header-container {
-            max-width: 1200px;
+        .topbar-inner {
+            max-width: 980px;
             margin: auto;
-
             display: flex;
-            align-items: center;
             justify-content: space-between;
-
-            gap: 20px;
-        }
-
-        .logo-section {
-            display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 16px;
+        }
+        .brand { font-weight: 700; font-size: 18px; }
+        .brand small { display:block; font-size:11px; opacity:.8; margin-top:2px; }
+        .lang-switch { display:flex; gap:6px; }
+        .lang-btn {
+            border: 1px solid rgba(255,255,255,.5);
+            background: rgba(255,255,255,.12);
+            color:#fff;
+            padding:7px 12px;
+            border-radius:20px;
+            cursor:pointer;
+            font-size:13px;
+        }
+        .lang-btn.active { background:#fff; color:#173a91; font-weight:700; }
+        .container { max-width: 980px; margin: 28px auto 60px; padding: 0 16px; }
+        .card {
+            background:#fff;
+            border-radius:16px;
+            padding:20px;
+            margin-bottom:18px;
+            box-shadow:0 5px 22px rgba(33,60,110,.09);
+            border:1px solid #e5ebf5;
+        }
+        h1,h2,h3 { margin-top:0; }
+        h1 { font-size:23px; color:#163b91; }
+        h2 { font-size:18px; color:#173a91; }
+        .sub { color:#667085; font-size:13px; line-height:1.6; }
+        .upload-box {
+            border:2px dashed #79a7ff;
+            border-radius:14px;
+            padding:34px 20px;
+            text-align:center;
+            background:#f8fbff;
+        }
+        .upload-icon { font-size:38px; }
+        input[type=file] { margin:18px 0; max-width:100%; }
+        .primary {
+            border:0;
+            background:#2860df;
+            color:white;
+            border-radius:8px;
+            padding:12px 22px;
+            cursor:pointer;
+            font-weight:700;
+        }
+        .primary:hover { background:#1e4fc0; }
+        .error {
+            background:#fff0f0;
+            border:1px solid #ffc5c5;
+            color:#a61b1b;
+            padding:12px 14px;
+            border-radius:10px;
+            margin-bottom:18px;
+        }
+        .result-title { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+        .badge {
+            display:inline-block;
+            background:#edf3ff;
+            color:#1946a2;
+            padding:7px 11px;
+            border-radius:20px;
+            font-size:12px;
+            font-weight:700;
+        }
+        .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:15px; }
+        .stat { background:#f8fafc; border:1px solid #e7ebf1; border-radius:12px; padding:14px; text-align:center; }
+        .stat-label { font-size:11px; color:#667085; }
+        .stat-value { font-weight:800; color:#173a91; margin-top:5px; }
+        .fields-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+        .field {
+            border:1px solid #dfe6f0;
+            background:#fbfcfe;
+            border-radius:10px;
+            padding:13px;
+            min-height:75px;
+        }
+        .field-label { font-size:12px; color:#59708e; font-weight:700; margin-bottom:5px; }
+        .field-label .ta { display:none; }
+        .field-value { font-size:14px; color:#172033; white-space:pre-wrap; overflow-wrap:anywhere; }
+        .not-detected { color:#8993a4; font-style:italic; }
+        .ocr {
+            background:#10182b;
+            color:#edf2ff;
+            padding:16px;
+            border-radius:10px;
+            white-space:pre-wrap;
+            overflow:auto;
+            max-height:430px;
+            font-size:13px;
+            line-height:1.55;
+        }
+        .processed-wrap { text-align:center; }
+        .processed-img {
+            max-width:100%;
+            max-height:800px;
+            border-radius:10px;
+            border:1px solid #ccd5e3;
+        }
+        .court-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+        .summary-box { background:#f8fbff; border-left:4px solid #2860df; padding:15px; border-radius:8px; line-height:1.65; }
+        .summary-box p { margin:0 0 8px; }
+        .voice-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+        .secondary { background:#eef3fb; color:#173a91; border:1px solid #d6e0f2; padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:600; }
+        .warning { background:#fff9e8; border:1px solid #f3d477; color:#795900; padding:13px 15px; border-radius:10px; font-size:12px; line-height:1.5; }
+        footer { text-align:center; color:#8a94a6; font-size:11px; margin-top:30px; }
+        .ta-mode .en { display:none !important; }
+        .ta-mode .ta { display:inline !important; }
+        .ta-mode .en-block { display:none !important; }
+        .ta-mode .ta-block { display:block !important; }
+        .ta-block { display:none; }
+        @media (max-width:700px) {
+            .stats,.fields-grid,.court-grid { grid-template-columns:1fr; }
+            .topbar-inner { align-items:flex-start; flex-direction:column; }
+            .container { margin-top:18px; }
         }
-
-        .logo {
-            width: 55px;
-            height: 55px;
-
-            border-radius: 15px;
-
-            background: white;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            font-size: 28px;
-        }
-
-        .title-section h1 {
-            font-size: 25px;
-            margin-bottom: 5px;
-        }
-
-        .title-section p {
-            font-size: 14px;
-            opacity: 0.85;
-        }
-
-        /* ================================
-           LANGUAGE SWITCH
-        ================================= */
-
-        .language-switch {
-            display: flex;
-            gap: 8px;
-
-            background: rgba(255, 255, 255, 0.12);
-
-            padding: 5px;
-            border-radius: 12px;
-        }
-
-        .language-switch button {
-            border: none;
-
-            padding: 9px 16px;
-
-            border-radius: 9px;
-
-            cursor: pointer;
-
-            background: transparent;
-
-            color: white;
-
-            font-size: 14px;
-
-            transition: 0.25s;
-        }
-
-        .language-switch button:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        .language-switch button.active {
-            background: white;
-            color: #1e3a8a;
-            font-weight: 700;
-        }
-
-        /* ================================
-           MAIN
-        ================================= */
-
-        .container {
-            max-width: 1200px;
-
-            margin: 35px auto;
-
-            padding: 0 20px;
-        }
-
-        /* ================================
-           INTRO
-        ================================= */
-
-        .intro-card {
-            background: white;
-
-            border-radius: 20px;
-
-            padding: 28px;
-
-            margin-bottom: 25px;
-
-            box-shadow:
-                0 8px 30px rgba(15, 23, 42, 0.08);
-        }
-
-        .intro-card h2 {
-            color: #1e3a8a;
-
-            margin-bottom: 10px;
-        }
-
-        .intro-card p {
-            line-height: 1.7;
-
-            color: #64748b;
-        }
-
-        /* ================================
-           UPLOAD CARD
-        ================================= */
-
-        .upload-card {
-            background: white;
-
-            border-radius: 20px;
-
-            padding: 30px;
-
-            margin-bottom: 30px;
-
-            box-shadow:
-                0 8px 30px rgba(15, 23, 42, 0.08);
-        }
-
-        .upload-area {
-            border: 2px dashed #93c5fd;
-
-            border-radius: 18px;
-
-            padding: 45px 25px;
-
-            text-align: center;
-
-            background: #f8fbff;
-
-            transition: 0.25s;
-        }
-
-        .upload-area:hover {
-            border-color: #2563eb;
-
-            background: #eff6ff;
-        }
-
-        .upload-icon {
-            font-size: 50px;
-
-            margin-bottom: 15px;
-        }
-
-        .upload-area h3 {
-            margin-bottom: 8px;
-
-            color: #1e3a8a;
-        }
-
-        .upload-area p {
-            color: #64748b;
-
-            margin-bottom: 20px;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .choose-file-btn {
-            display: inline-block;
-
-            padding: 12px 25px;
-
-            background: #2563eb;
-
-            color: white;
-
-            border-radius: 10px;
-
-            cursor: pointer;
-
-            font-weight: 600;
-
-            transition: 0.25s;
-        }
-
-        .choose-file-btn:hover {
-            background: #1d4ed8;
-
-            transform: translateY(-1px);
-        }
-
-        .file-name {
-            margin-top: 15px;
-
-            color: #334155;
-
-            font-weight: 600;
-        }
-
-        .process-btn {
-            width: 100%;
-
-            margin-top: 20px;
-
-            padding: 14px;
-
-            border: none;
-
-            border-radius: 12px;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #2563eb,
-                    #1d4ed8
-                );
-
-            color: white;
-
-            font-size: 16px;
-
-            font-weight: 700;
-
-            cursor: pointer;
-
-            transition: 0.25s;
-        }
-
-        .process-btn:hover {
-            transform: translateY(-2px);
-
-            box-shadow:
-                0 8px 20px rgba(37, 99, 235, 0.3);
-        }
-
-        /* ================================
-           ERROR
-        ================================= */
-
-        .error-box {
-            background: #fef2f2;
-
-            border: 1px solid #fecaca;
-
-            color: #991b1b;
-
-            padding: 15px 18px;
-
-            border-radius: 12px;
-
-            margin-bottom: 25px;
-        }
-
-        /* ================================
-           RESULT HEADER
-        ================================= */
-
-        .result-header {
-            background: white;
-
-            border-radius: 20px;
-
-            padding: 25px;
-
-            margin-bottom: 20px;
-
-            box-shadow:
-                0 8px 30px rgba(15, 23, 42, 0.08);
-        }
-
-        .result-title {
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            gap: 15px;
-
-            flex-wrap: wrap;
-        }
-
-        .result-title h2 {
-            color: #0f172a;
-        }
-
-        .document-type {
-            display: inline-block;
-
-            background: #dbeafe;
-
-            color: #1e40af;
-
-            padding: 8px 14px;
-
-            border-radius: 20px;
-
-            font-weight: 700;
-
-            margin-top: 10px;
-        }
-
-        /* ================================
-           STATS
-        ================================= */
-
-        .stats-grid {
-            display: grid;
-
-            grid-template-columns:
-                repeat(3, 1fr);
-
-            gap: 15px;
-
-            margin-top: 20px;
-        }
-
-        .stat-card {
-            background: #f8fafc;
-
-            border-radius: 14px;
-
-            padding: 18px;
-
-            text-align: center;
-        }
-
-        .stat-card .icon {
-            font-size: 25px;
-
-            margin-bottom: 8px;
-        }
-
-        .stat-card .label {
-            color: #64748b;
-
-            font-size: 13px;
-
-            margin-bottom: 5px;
-        }
-
-        .stat-card .value {
-            font-size: 18px;
-
-            font-weight: 700;
-
-            color: #0f172a;
-        }
-
-        /* ================================
-           SECTION
-        ================================= */
-
-        .section {
-            background: white;
-
-            border-radius: 20px;
-
-            padding: 28px;
-
-            margin-bottom: 25px;
-
-            box-shadow:
-                0 8px 30px rgba(15, 23, 42, 0.08);
-        }
-
-        .section-title {
-            display: flex;
-
-            align-items: center;
-
-            gap: 10px;
-
-            color: #1e3a8a;
-
-            margin-bottom: 20px;
-
-            font-size: 21px;
-        }
-
-        /* ================================
-           FIELDS
-        ================================= */
-
-        .fields-grid {
-            display: grid;
-
-            grid-template-columns:
-                repeat(2, 1fr);
-
-            gap: 15px;
-        }
-
-        .info-card {
-            background: #f8fafc;
-
-            border: 1px solid #e2e8f0;
-
-            border-radius: 14px;
-
-            padding: 17px;
-
-            transition: 0.2s;
-        }
-
-        .info-card:hover {
-            border-color: #93c5fd;
-
-            transform: translateY(-1px);
-        }
-
-        .field-label {
-            font-size: 13px;
-
-            color: #64748b;
-
-            font-weight: 600;
-
-            margin-bottom: 7px;
-        }
-
-        .field-value {
-            font-size: 16px;
-
-            color: #0f172a;
-
-            font-weight: 600;
-
-            word-break: break-word;
-
-            line-height: 1.5;
-        }
-
-        /* ================================
-           COURT ORDER
-        ================================= */
-
-        .court-section {
-            border-left: 5px solid #7c3aed;
-        }
-
-        .court-grid {
-            display: grid;
-
-            grid-template-columns:
-                repeat(2, 1fr);
-
-            gap: 15px;
-        }
-
-        .outcome-card {
-            grid-column: 1 / -1;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #f5f3ff,
-                    #ede9fe
-                );
-
-            border: 1px solid #c4b5fd;
-        }
-
-        .outcome-en,
-        .outcome-ta {
-            font-size: 17px;
-
-            color: #5b21b6;
-
-            font-weight: 800;
-        }
-
-        .important-points {
-            margin-top: 20px;
-        }
-
-        .important-points h3 {
-            margin-bottom: 12px;
-
-            color: #5b21b6;
-        }
-
-        .point {
-            background: #faf5ff;
-
-            border-left: 4px solid #8b5cf6;
-
-            padding: 12px 15px;
-
-            margin-bottom: 10px;
-
-            border-radius: 8px;
-
-            line-height: 1.6;
-        }
-
-        /* ================================
-           SUMMARY
-        ================================= */
-
-        .summary-box {
-            background:
-                linear-gradient(
-                    135deg,
-                    #eff6ff,
-                    #f0fdfa
-                );
-
-            border-radius: 18px;
-
-            padding: 25px;
-
-            border: 1px solid #bfdbfe;
-        }
-
-        .summary-box h3 {
-            color: #1e3a8a;
-
-            margin-bottom: 15px;
-        }
-
-        .summary-text {
-            line-height: 1.8;
-
-            color: #334155;
-
-            white-space: pre-line;
-
-            font-size: 16px;
-        }
-
-        /* ================================
-           VOICE BUTTONS
-        ================================= */
-
-        .voice-controls {
-            display: flex;
-
-            flex-wrap: wrap;
-
-            gap: 10px;
-
-            margin-top: 20px;
-        }
-
-        .voice-btn {
-            border: none;
-
-            padding: 10px 16px;
-
-            border-radius: 9px;
-
-            cursor: pointer;
-
-            font-weight: 600;
-
-            transition: 0.2s;
-        }
-
-        .voice-btn:hover {
-            transform: translateY(-1px);
-        }
-
-        .listen-btn {
-            background: #2563eb;
-
-            color: white;
-        }
-
-        .pause-btn {
-            background: #f59e0b;
-
-            color: white;
-        }
-
-        .stop-btn {
-            background: #ef4444;
-
-            color: white;
-        }
-
-        /* ================================
-           OCR TEXT
-        ================================= */
-
-        .ocr-box {
-            background: #0f172a;
-
-            color: #e2e8f0;
-
-            padding: 20px;
-
-            border-radius: 14px;
-
-            max-height: 400px;
-
-            overflow-y: auto;
-
-            white-space: pre-wrap;
-
-            line-height: 1.7;
-
-            font-family: Consolas, monospace;
-
-            font-size: 13px;
-        }
-
-        /* ================================
-           WARNING
-        ================================= */
-
-        .warning-box {
-            background: #fffbeb;
-
-            border: 1px solid #fde68a;
-
-            color: #92400e;
-
-            padding: 18px;
-
-            border-radius: 14px;
-
-            line-height: 1.7;
-
-            margin-top: 20px;
-        }
-
-        /* ================================
-           IMAGE PREVIEW
-        ================================= */
-
-        .preview-container {
-            text-align: center;
-        }
-
-        .preview-image {
-            max-width: 100%;
-
-            max-height: 700px;
-
-            border-radius: 14px;
-
-            border: 1px solid #e2e8f0;
-
-            box-shadow:
-                0 5px 20px rgba(0, 0, 0, 0.08);
-        }
-
-        /* ================================
-           HIDDEN LANGUAGE CONTENT
-        ================================= */
-
-        .tamil-content {
-            display: none;
-        }
-
-        /* ================================
-           FOOTER
-        ================================= */
-
-        footer {
-            text-align: center;
-
-            padding: 30px 20px;
-
-            color: #64748b;
-
-            font-size: 13px;
-        }
-
-        /* ================================
-           LOADING
-        ================================= */
-
-        .loading {
-            display: none;
-
-            text-align: center;
-
-            margin-top: 15px;
-
-            color: #2563eb;
-
-            font-weight: 600;
-        }
-
-        .spinner {
-            display: inline-block;
-
-            width: 18px;
-            height: 18px;
-
-            border: 3px solid #dbeafe;
-
-            border-top-color: #2563eb;
-
-            border-radius: 50%;
-
-            animation: spin 0.8s linear infinite;
-
-            vertical-align: middle;
-
-            margin-right: 8px;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* ================================
-           RESPONSIVE
-        ================================= */
-
-        @media (max-width: 768px) {
-
-            .header-container {
-                flex-direction: column;
-
-                align-items: flex-start;
-            }
-
-            .language-switch {
-                width: 100%;
-            }
-
-            .language-switch button {
-                flex: 1;
-            }
-
-            .title-section h1 {
-                font-size: 20px;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .fields-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .court-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .section,
-            .upload-card,
-            .result-header,
-            .intro-card {
-                padding: 20px;
-            }
-        }
-
     </style>
 </head>
-
-
 <body>
 
-<!-- ============================================================
-     HEADER
-============================================================ -->
-
-<header>
-
-    <div class="header-container">
-
-        <div class="logo-section">
-
-            <div class="logo">
-                📄
-            </div>
-
-            <div class="title-section">
-
-                <h1>
-                    Government Document Assistant
-                </h1>
-
-                <p>
-                    Tamil + English Document Understanding System
-                </p>
-
-            </div>
-
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">
+            📄 Government Document Assistant
+            <small>Tamil + English Document Readability & Understanding</small>
         </div>
-
-
-        <!-- LANGUAGE SWITCH -->
-
-        <div class="language-switch">
-
-            <button
-                id="englishBtn"
-                class="active"
-                onclick="setLanguage('en')">
-
-                🇬🇧 English
-
-            </button>
-
-            <button
-                id="tamilBtn"
-                onclick="setLanguage('ta')">
-
-                🇮🇳 தமிழ்
-
-            </button>
-
+        <div class="lang-switch">
+            <button id="englishBtn" class="lang-btn active" onclick="setLanguage('en')">🇬🇧 English</button>
+            <button id="tamilBtn" class="lang-btn" onclick="setLanguage('ta')">🇮🇳 தமிழ்</button>
         </div>
-
     </div>
-
 </header>
 
+<main class="container">
 
-
-<!-- ============================================================
-     MAIN
-============================================================ -->
-
-<div class="container">
-
-
-    <!-- ========================================================
-         INTRO
-    ========================================================= -->
-
-    <div class="intro-card">
-
-        <div class="english-content">
-
-            <h2>
-                📑 Government Document Understanding Assistant
-            </h2>
-
-            <p>
-                Upload a government document image and the system
-                will extract important information using OCR,
-                identify the document type and provide a simple
-                explanation.
-            </p>
-
+    <section class="card">
+        <div class="en-block">
+            <h1>Government Document Understanding Assistant</h1>
+            <p class="sub">Upload a government document image. The system uses Tamil + English OCR, identifies the document type, extracts important fields and provides a simple explanation.</p>
         </div>
-
-
-        <div class="tamil-content">
-
-            <h2>
-                📑 அரசு ஆவணங்களைப் புரிந்துகொள்ளும் உதவியாளர்
-            </h2>
-
-            <p>
-                அரசு ஆவணத்தின் படத்தை பதிவேற்றுங்கள்.
-                OCR தொழில்நுட்பத்தைப் பயன்படுத்தி முக்கியமான
-                தகவல்கள் கண்டறியப்பட்டு, ஆவண வகை அடையாளம் காணப்பட்டு,
-                எளிமையான விளக்கம் வழங்கப்படும்.
-            </p>
-
+        <div class="ta-block">
+            <h1>அரசு ஆவணங்களைப் புரிந்துகொள்ளும் உதவியாளர்</h1>
+            <p class="sub">அரசு ஆவணத்தின் படத்தை பதிவேற்றுங்கள். தமிழ் + ஆங்கில OCR மூலம் ஆவண வகையை கண்டறிந்து முக்கிய தகவல்களைப் பிரித்தெடுக்கிறது.</p>
         </div>
+    </section>
 
-    </div>
-
-
-
-    <!-- ========================================================
-         UPLOAD
-    ========================================================= -->
-
-    <div class="upload-card">
-
-        <form
-            method="POST"
-            action="/"
-            enctype="multipart/form-data"
-            onsubmit="showLoading()">
-
-
-            <div class="upload-area">
-
-                <div class="upload-icon">
-                    📤
+    <section class="card">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="upload-box">
+                <div class="upload-icon">📤</div>
+                <div class="en-block">
+                    <strong>Upload Government Document</strong>
+                    <div class="sub">Supported formats: PNG, JPG, JPEG</div>
                 </div>
-
-
-                <div class="english-content">
-
-                    <h3>
-                        Upload Government Document
-                    </h3>
-
-                    <p>
-                        Supported formats:
-                        PNG, JPG, JPEG
-                    </p>
-
+                <div class="ta-block">
+                    <strong>அரசு ஆவணத்தை பதிவேற்றவும்</strong>
+                    <div class="sub">ஆதரிக்கப்படும் வடிவங்கள்: PNG, JPG, JPEG</div>
                 </div>
-
-
-                <div class="tamil-content">
-
-                    <h3>
-                        அரசு ஆவணத்தை பதிவேற்றவும்
-                    </h3>
-
-                    <p>
-                        ஆதரிக்கப்படும் கோப்புகள்:
-                        PNG, JPG, JPEG
-                    </p>
-
-                </div>
-
-
-                <label
-                    for="fileInput"
-                    class="choose-file-btn">
-
-                    <span class="english-content">
-                        Choose File
-                    </span>
-
-                    <span
-                        class="tamil-content">
-
-                        கோப்பைத் தேர்ந்தெடுக்கவும்
-
-                    </span>
-
-                </label>
-
-
-                <input
-                    type="file"
-                    id="fileInput"
-                    name="file"
-                    accept=".png,.jpg,.jpeg"
-                    required>
-
-
-                <div
-                    id="fileName"
-                    class="file-name">
-
-                </div>
-
+                <input id="documentFile" type="file" name="file" accept=".png,.jpg,.jpeg" required>
+                <div id="fileName" class="sub" style="margin-top:-8px;"></div>
+                <br>
+                <button class="primary" type="submit">
+                    <span class="en">🔎 Process Document</span>
+                    <span class="ta">🔎 ஆவணத்தை செயலாக்கு</span>
+                </button>
             </div>
-
-
-            <button
-                type="submit"
-                class="process-btn">
-
-                <span class="english-content">
-                    🔍 Process Document
-                </span>
-
-                <span class="tamil-content">
-                    🔍 ஆவணத்தை செயலாக்கவும்
-                </span>
-
-            </button>
-
-
-            <div
-                id="loading"
-                class="loading">
-
-                <span class="spinner"></span>
-
-                <span class="english-content">
-                    Processing document...
-                </span>
-
-                <span class="tamil-content">
-                    ஆவணம் செயலாக்கப்படுகிறது...
-                </span>
-
-            </div>
-
         </form>
-
-    </div>
-
-
-
-    <!-- ========================================================
-         ERROR
-    ========================================================= -->
+    </section>
 
     {% if error %}
-
-    <div class="error-box">
-
-        <strong>
-
-            <span class="english-content">
-                ⚠️ Error:
-            </span>
-
-            <span class="tamil-content">
-                ⚠️ பிழை:
-            </span>
-
-        </strong>
-
-        {{ error }}
-
-    </div>
-
+    <div class="error">⚠️ {{ error }}</div>
     {% endif %}
-
-
 
     {% if result %}
-
-
-    <!-- ========================================================
-         RESULT HEADER
-    ========================================================= -->
-
-    <div class="result-header">
-
+    <section class="card">
         <div class="result-title">
-
-            <div>
-
-                <div class="english-content">
-
-                    <h2>
-                        📋 Document Analysis Result
-                    </h2>
-
-                </div>
-
-
-                <div class="tamil-content">
-
-                    <h2>
-                        📋 ஆவண பகுப்பாய்வு முடிவு
-                    </h2>
-
-                </div>
-
-
-                <!-- DOCUMENT TYPE -->
-
-                <div
-                    class="document-type">
-
-                    <span
-                        id="documentTypeEnglish"
-                        class="english-content">
-
-                        {{ result.document_type }}
-
-                    </span>
-
-
-                    <span
-                        id="documentTypeTamil"
-                        class="tamil-content">
-
-                        {{ result.document_type_ta }}
-
-                    </span>
-
-                </div>
-
+            <h2>📋 <span class="en">Document Analysis Result</span><span class="ta">ஆவண பகுப்பாய்வு முடிவு</span></h2>
+            <div class="badge">
+                <span class="en">{{ result.document_type }}</span>
+                <span class="ta">{{ result.document_type_ta }}</span>
             </div>
-
         </div>
 
-
-        <!-- STATS -->
-
-        <div class="stats-grid">
-
-
-            <!-- OCR CONFIDENCE -->
-
-            <div class="stat-card">
-
-                <div class="icon">
-                    🎯
-                </div>
-
-                <div class="label">
-
-                    <span class="english-content">
-                        OCR Confidence
-                    </span>
-
-                    <span class="tamil-content">
-                        OCR நம்பகத்தன்மை
-                    </span>
-
-                </div>
-
-                <div class="value">
-
-                    {{ "%.1f"|format(result.confidence) }}%
-
-                </div>
-
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label"><span class="en">OCR Confidence</span><span class="ta">OCR நம்பகத்தன்மை</span></div>
+                <div class="stat-value">{{ result.confidence }}%</div>
             </div>
-
-
-            <!-- OCR QUALITY -->
-
-            <div class="stat-card">
-
-                <div class="icon">
-                    ⭐
-                </div>
-
-                <div class="label">
-
-                    <span class="english-content">
-                        OCR Quality
-                    </span>
-
-                    <span class="tamil-content">
-                        OCR தரம்
-                    </span>
-
-                </div>
-
-                <div class="value">
-
-                    {{ result.quality }}
-
-                </div>
-
+            <div class="stat">
+                <div class="stat-label"><span class="en">OCR Quality</span><span class="ta">OCR தரம்</span></div>
+                <div class="stat-value">{{ result.quality }}</div>
             </div>
-
-
-            <!-- DOCUMENT CLASSIFICATION -->
-
-            <div class="stat-card">
-
-                <div class="icon">
-                    📑
-                </div>
-
-                <div class="label">
-
-                    <span class="english-content">
-                        Classification
-                    </span>
-
-                    <span class="tamil-content">
-                        ஆவண வகைப்பாடு
-                    </span>
-
-                </div>
-
-                <div class="value">
-
-                    {{ "%.1f"|format(result.classification_confidence) }}%
-
-                </div>
-
+            <div class="stat">
+                <div class="stat-label"><span class="en">Classification</span><span class="ta">ஆவண வகை நம்பகத்தன்மை</span></div>
+                <div class="stat-value">{{ result.classification_confidence }}%</div>
             </div>
-
-
         </div>
+    </section>
 
-    </div>
-
-
-
-    <!-- ========================================================
-         EXTRACTED INFORMATION
-    ========================================================= -->
-
-    {% if result.fields_i18n %}
-
-    <div class="section">
-
-        <div class="section-title">
-
-            📌
-
-            <span class="english-content">
-                Extracted Information
-            </span>
-
-            <span class="tamil-content">
-                கண்டறியப்பட்ட தகவல்கள்
-            </span>
-
-        </div>
-
-
+    <section class="card">
+        <h2>📌 <span class="en">Extracted Information</span><span class="ta">பிரித்தெடுக்கப்பட்ட தகவல்கள்</span></h2>
         <div class="fields-grid">
-
-            {% for field in result.fields_i18n %}
-
-            <div class="info-card">
-
-
-                <!-- LABEL -->
-
-                <div class="field-label">
-
-                    <span class="english-content">
-                        {{ field.label_en }}
-                    </span>
-
-                    <span class="tamil-content">
-                        {{ field.label_ta }}
-                    </span>
-
+            {% if result.fields_i18n %}
+                {% for field in result.fields_i18n %}
+                <div class="field">
+                    <div class="field-label">
+                        <span class="en">{{ field.label_en }}</span>
+                        <span class="ta">{{ field.label_ta }}</span>
+                    </div>
+                    <div class="field-value {% if field.value == 'Not detected' %}not-detected{% endif %}">{{ field.value }}</div>
                 </div>
-
-
-                <!-- VALUE -->
-
-                <div class="field-value">
-
-                    {{ field.value }}
-
+                {% endfor %}
+            {% elif result.fields %}
+                {% for key, value in result.fields.items() %}
+                <div class="field">
+                    <div class="field-label">
+                        <span class="en">{{ key }}</span>
+                        <span class="ta">
+                            {% set tamil_labels = {
+                                "Name": "பெயர்",
+                                "Father's Name": "தந்தையின் பெயர்",
+                                "Mother's Name": "தாயின் பெயர்",
+                                "Date of Birth": "பிறந்த தேதி",
+                                "Place of Birth": "பிறந்த இடம்",
+                                "Name of Deceased": "இறந்தவரின் பெயர்",
+                                "Date of Death": "இறந்த தேதி",
+                                "Place of Death": "இறந்த இடம்",
+                                "Father / Husband Name": "தந்தை / கணவர் பெயர்",
+                                "Father / Mother Name": "தந்தை / தாய் பெயர்",
+                                "Annual Income": "ஆண்டு வருமானம்",
+                                "Address": "முகவரி",
+                                "District": "மாவட்டம்",
+                                "Certificate Number": "சான்றிதழ் எண்",
+                                "Community": "சமூகம்",
+                                "Caste": "சாதி",
+                                "Deceased Person": "இறந்த நபர்",
+                                "Legal Heirs": "சட்ட வாரிசுகள்",
+                                "Relationship": "உறவு",
+                                "Owner Name": "உரிமையாளர் பெயர்",
+                                "Survey Number": "சர்வே எண்",
+                                "Patta Number": "பட்டா எண்",
+                                "Village": "கிராமம்",
+                                "Taluk": "வட்டம்",
+                                "Extent": "பரப்பளவு",
+                                "Order / Notice Number": "உத்தரவு / அறிவிப்பு எண்",
+                                "Department": "துறை",
+                                "Subject": "பொருள்",
+                                "Applicant Name": "விண்ணப்பதாரர் பெயர்",
+                                "Application Number": "விண்ணப்ப எண்",
+                                "Case Number": "வழக்கு எண்",
+                                "Court Name": "நீதிமன்றம்",
+                                "Judge": "நீதிபதி",
+                                "Order Date": "உத்தரவு தேதி",
+                                "Petitioner": "மனுதாரர்",
+                                "Respondent": "எதிர்மனுதாரர்",
+                                "Outcome": "முடிவு",
+                                "Important Points": "முக்கிய அம்சங்கள்",
+                                "Dates": "தேதிகள்"
+                            } %}
+                            {{ tamil_labels.get(key, key) }}
+                        </span>
+                    </div>
+                    <div class="field-value {% if value == 'Not detected' %}not-detected{% endif %}">{{ value }}</div>
                 </div>
-
-
-            </div>
-
-            {% endfor %}
-
+                {% endfor %}
+            {% else %}
+                <div class="field"><div class="field-value not-detected">Not detected</div></div>
+            {% endif %}
         </div>
-
-    </div>
-
-    {% endif %}
-
-
-
-    <!-- ========================================================
-         COURT ORDER
-    ========================================================= -->
-
-    {% if result.document_type == "Court Order" and result.court_order %}
-
-    <div class="section court-section">
-
-        <div class="section-title">
-
-            ⚖️
-
-            <span class="english-content">
-                Court Order Details
-            </span>
-
-            <span class="tamil-content">
-                நீதிமன்ற உத்தரவு விவரங்கள்
-            </span>
-
-        </div>
-
-
-        <div class="court-grid">
-
-
-            <!-- CASE NUMBER -->
-
-            <div class="info-card">
-
-                <div class="field-label">
-
-                    <span class="english-content">
-                        Case Number
-                    </span>
-
-                    <span class="tamil-content">
-                        வழக்கு எண்
-                    </span>
-
-                </div>
-
-                <div class="field-value">
-
-                    {{ result.court_order.case_number }}
-
-                </div>
-
-            </div>
-
-
-            <!-- COURT NAME -->
-
-            <div class="info-card">
-
-                <div class="field-label">
-
-                    <span class="english-content">
-                        Court Name
-                    </span>
-
-                    <span class="tamil-content">
-                        நீதிமன்றம்
-                    </span>
-
-                </div>
-
-                <div class="field-value">
-
-                    {{ result.court_order.court_name }}
-
-                </div>
-
-            </div>
-
-
-            <!-- JUDGE -->
-
-            <div class="info-card">
-
-                <div class="field-label">
-
-                    <span class="english-content">
-                        Judge
-                    </span>
-
-                    <span class="tamil-content">
-                        நீதிபதி
-                    </span>
-
-                </div>
-
-                <div class="field-value">
-
-                    {{ result.court_order.judge }}
-
-                </div>
-
-            </div>
-
-
-            <!-- ORDER DATE -->
-
-            <div class="info-card">
-
-                <div class="field-label">
-
-                    <span class="english-content">
-                        Order Date
-                    </span>
-
-                    <span class="tamil-content">
-                        உத்தரவு தேதி
-                    </span>
-
-                </div>
-
-                <div class="field-value">
-
-                    {{ result.court_order.order_date }}
-
-                </div>
-
-            </div>
-
-
-            <!-- PETITIONER -->
-
-            <div class="info-card">
-
-                <div class="field-label">
-
-                    <span class="english-content">
-                        Petitioner
-                    </span>
-
-                    <span class="tamil-content">
-                        மனுதாரர்
-                    </span>
-
-                </div>
-
-                <div class="field-value">
-
-                    {{ result.court_order.petitioner }}
-
-                </div>
-
-            </div>
-
-
-            <!-- RESPONDENT -->
-
-            <div class="info-card">
-
-                <div class="field-label">
-
-                    <span class="english-content">
-                        Respondent
-                    </span>
-
-                    <span class="tamil-content">
-                        எதிர்மனுதாரர்
-                    </span>
-
-                </div>
-
-                <div class="field-value">
-
-                    {{ result.court_order.respondent }}
-
-                </div>
-
-            </div>
-
-
-            <!-- OUTCOME -->
-
-            <div class="info-card outcome-card">
-
-                <div class="field-label">
-
-                    <span class="english-content">
-                        Detected Outcome
-                    </span>
-
-                    <span class="tamil-content">
-                        கண்டறியப்பட்ட முடிவு
-                    </span>
-
-                </div>
-
-                <div class="field-value">
-
-                    <span class="outcome-en">
-
-                        {{ result.court_order.outcome }}
-
-                    </span>
-
-
-                    <span
-                        class="outcome-ta"
-                        style="display:none;">
-
-                        {% if result.court_order.outcome_ta %}
-
-                            {{ result.court_order.outcome_ta }}
-
-                        {% else %}
-
-                            {{ result.court_order.outcome }}
-
-                        {% endif %}
-
-                    </span>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- IMPORTANT POINTS -->
-
-        {% if result.court_order.important_points %}
-
-        <div class="important-points">
-
-            <h3>
-
-                <span class="english-content">
-                    📌 Important Points
-                </span>
-
-                <span class="tamil-content">
-                    📌 முக்கியமான அம்சங்கள்
-                </span>
-
-            </h3>
-
-
-            {% for point in result.court_order.important_points %}
-
-            <div class="point">
-
-                {{ point }}
-
-            </div>
-
-            {% endfor %}
-
-        </div>
-
-        {% endif %}
-
-    </div>
-
-    {% endif %}
-
-
-
-    <!-- ========================================================
-         SUMMARY
-    ========================================================= -->
+    </section>
 
     {% if result.court_order %}
+    <section class="card">
+        <h2>⚖️ <span class="en">Court Order Explanation</span><span class="ta">நீதிமன்ற உத்தரவு விளக்கம்</span></h2>
 
-    <div class="section">
-
-        <div class="section-title">
-
-            💡
-
-            <span class="english-content">
-                Simple Explanation
-            </span>
-
-            <span class="tamil-content">
-                எளிய விளக்கம்
-            </span>
-
+        <div class="court-grid">
+            <div class="field"><div class="field-label"><span class="en">Case Number</span><span class="ta">வழக்கு எண்</span></div><div class="field-value">{{ result.court_order.case_number }}</div></div>
+            <div class="field"><div class="field-label"><span class="en">Court Name</span><span class="ta">நீதிமன்றம்</span></div><div class="field-value">{{ result.court_order.court_name }}</div></div>
+            <div class="field"><div class="field-label"><span class="en">Judge</span><span class="ta">நீதிபதி</span></div><div class="field-value">{{ result.court_order.judge }}</div></div>
+            <div class="field"><div class="field-label"><span class="en">Order Date</span><span class="ta">உத்தரவு தேதி</span></div><div class="field-value">{{ result.court_order.order_date }}</div></div>
+            <div class="field"><div class="field-label"><span class="en">Petitioner</span><span class="ta">மனுதாரர்</span></div><div class="field-value">{{ result.court_order.petitioner }}</div></div>
+            <div class="field"><div class="field-label"><span class="en">Respondent</span><span class="ta">எதிர்மனுதாரர்</span></div><div class="field-value">{{ result.court_order.respondent }}</div></div>
+            <div class="field"><div class="field-label"><span class="en">Outcome</span><span class="ta">முடிவு</span></div><div class="field-value" id="courtOutcome">{{ result.court_order.outcome }}</div></div>
         </div>
 
+        <h3 style="margin-top:18px;">📝 <span class="en">Summary</span><span class="ta">சுருக்கம்</span></h3>
+        <div class="summary-box en-block">
+            {% for line in result.court_order.english_summary %}<p>{{ line }}</p>{% endfor %}
+        </div>
+        <div class="summary-box ta-block">
+            {% for line in result.court_order.tamil_summary %}<p>{{ line }}</p>{% endfor %}
+        </div>
 
+        {% if result.court_order.important_points %}
+        <h3 style="margin-top:18px;">📍 <span class="en">Important Points</span><span class="ta">முக்கிய அம்சங்கள்</span></h3>
         <div class="summary-box">
-
-
-            <!-- ENGLISH -->
-
-            <div class="english-content">
-
-                <h3>
-                    📄 English Summary
-                </h3>
-
-                <div
-                    id="englishSummary"
-                    class="summary-text">
-
-                    {{ result.court_order.english_summary }}
-
-                </div>
-
-
-                <div class="voice-controls">
-
-                    <button
-                        class="voice-btn listen-btn"
-                        onclick="speakEnglish()">
-
-                        🔊 Listen in English
-
-                    </button>
-
-                    <button
-                        class="voice-btn pause-btn"
-                        onclick="pauseSpeech()">
-
-                        ⏸ Pause
-
-                    </button>
-
-                    <button
-                        class="voice-btn stop-btn"
-                        onclick="stopSpeech()">
-
-                        ⏹ Stop
-
-                    </button>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- TAMIL -->
-
-            <div
-                class="tamil-content">
-
-                <h3>
-                    📄 தமிழ் சுருக்கம்
-                </h3>
-
-                <div
-                    id="tamilSummary"
-                    class="summary-text">
-
-                    {{ result.court_order.tamil_summary }}
-
-                </div>
-
-
-                <div class="voice-controls">
-
-                    <button
-                        class="voice-btn listen-btn"
-                        onclick="speakTamil()">
-
-                        🔊 தமிழில் கேட்க
-
-                    </button>
-
-                    <button
-                        class="voice-btn pause-btn"
-                        onclick="pauseSpeech()">
-
-                        ⏸ இடைநிறுத்து
-
-                    </button>
-
-                    <button
-                        class="voice-btn stop-btn"
-                        onclick="stopSpeech()">
-
-                        ⏹ நிறுத்து
-
-                    </button>
-
-                </div>
-
-            </div>
-
+            {% for point in result.court_order.important_points %}<p>{{ point }}</p>{% endfor %}
         </div>
+        {% endif %}
 
-    </div>
-
+        <div class="voice-row">
+            <button class="secondary" onclick="speakCourtOrder('en')">🔊 English Voice</button>
+            <button class="secondary" onclick="speakCourtOrder('ta')">🔊 தமிழ் குரல்</button>
+            <button class="secondary" onclick="stopVoice()">⏹ Stop</button>
+        </div>
+    </section>
     {% endif %}
 
-
-
-    <!-- ========================================================
-         OCR TEXT
-    ========================================================= -->
-
-    <div class="section">
-
-        <div class="section-title">
-
-            🔎
-
-            <span class="english-content">
-                Extracted OCR Text
-            </span>
-
-            <span class="tamil-content">
-                OCR மூலம் கண்டறியப்பட்ட உரை
-            </span>
-
+    <section class="card">
+        <h2>🔎 <span class="en">Extracted OCR Text</span><span class="ta">பிரித்தெடுக்கப்பட்ட OCR உரை</span></h2>
+        <div class="ocr" id="ocrText">{{ result.text }}</div>
+        <div class="voice-row">
+            <button class="secondary" onclick="speakOCR('en')">🔊 Read English</button>
+            <button class="secondary" onclick="speakOCR('ta')">🔊 தமிழில் வாசிக்க</button>
+            <button class="secondary" onclick="stopVoice()">⏹ Stop</button>
         </div>
-
-
-        <div class="ocr-box">
-
-            {{ result.text }}
-
-        </div>
-
-    </div>
-
-
-
-    <!-- ========================================================
-         PROCESSED IMAGE
-    ========================================================= -->
+    </section>
 
     {% if result.processed_filename %}
-
-    <div class="section">
-
-        <div class="section-title">
-
-            🖼️
-
-            <span class="english-content">
-                Processed Document
-            </span>
-
-            <span class="tamil-content">
-                செயலாக்கப்பட்ட ஆவணம்
-            </span>
-
-        </div>
-
-
-        <div class="preview-container">
-
-            <img
-                class="preview-image"
-                src="{{ url_for(
-                    'processed_file',
-                    filename=result.processed_filename
-                ) }}"
-                alt="Processed Document">
-
-        </div>
-
-    </div>
-
+    <section class="card processed-wrap">
+        <h2>🖼️ <span class="en">Processed Document</span><span class="ta">செயலாக்கப்பட்ட ஆவணம்</span></h2>
+        <img class="processed-img" src="{{ url_for('processed_file', filename=result.processed_filename) }}" alt="Processed document">
+    </section>
     {% endif %}
 
-
-
-    <!-- ========================================================
-         WARNING
-    ========================================================= -->
-
-    <div class="warning-box">
-
-        <strong>
-
-            <span class="english-content">
-                ⚠️ Important:
-            </span>
-
-            <span class="tamil-content">
-                ⚠️ முக்கிய குறிப்பு:
-            </span>
-
-        </strong>
-
-
-        <span class="english-content">
-
-            The information shown above is extracted using OCR
-            and automated document analysis. OCR may contain
-            errors. For legal or official purposes, always
-            verify the information with the original document.
-
-        </span>
-
-
-        <span class="tamil-content">
-
-            மேலே காட்டப்படும் தகவல்கள் OCR மற்றும் தானியங்கி
-            ஆவண பகுப்பாய்வு மூலம் கண்டறியப்பட்டவை.
-            OCR-ல் பிழைகள் இருக்கலாம். சட்ட அல்லது அதிகாரப்பூர்வ
-            பயன்பாட்டிற்கு அசல் ஆவணத்துடன் தகவல்களை
-            சரிபார்க்கவும்.
-
-        </span>
-
+    <div class="warning">
+        ⚠️ <strong><span class="en">Important:</span><span class="ta">முக்கியம்:</span></strong>
+        <span class="en">The information shown above is extracted using OCR and automated document analysis. OCR may contain errors. For legal or official purposes, always verify the information with the original document.</span>
+        <span class="ta">மேலே காட்டப்படும் தகவல்கள் OCR மற்றும் தானியங்கி ஆவண பகுப்பாய்வு மூலம் பெறப்பட்டவை. OCR-ல் பிழைகள் இருக்கலாம். சட்ட அல்லது அதிகாரப்பூர்வ பயன்பாட்டிற்கு அசல் ஆவணத்துடன் தகவலை சரிபார்க்கவும்.</span>
     </div>
-
-
     {% endif %}
 
-</div>
-
-
-
-<!-- ============================================================
-     FOOTER
-============================================================ -->
-
-<footer>
-
-    <span class="english-content">
-
-        Government Document Readability & Understanding Assistant
-        <br>
-        OCR-based system — Not legal advice
-
-    </span>
-
-
-    <span class="tamil-content">
-
-        அரசு ஆவண வாசிப்பு மற்றும் புரிதல் உதவியாளர்
-        <br>
-        OCR அடிப்படையிலான அமைப்பு — சட்ட ஆலோசனை அல்ல
-
-    </span>
-
-</footer>
-
-
-
-<!-- ============================================================
-     JAVASCRIPT
-============================================================ -->
+    <footer>
+        Government Document Readability & Understanding Assistant<br>
+        OCR-based Tamil + English document analysis
+    </footer>
+</main>
 
 <script>
+    let currentLanguage = localStorage.getItem("documentLanguage") || "en";
 
-    /* ============================================================
-       FILE NAME
-    ============================================================ */
-
-    const fileInput =
-        document.getElementById("fileInput");
-
-    const fileName =
-        document.getElementById("fileName");
-
-
-    if (fileInput) {
-
-        fileInput.addEventListener(
-            "change",
-            function () {
-
-                if (this.files.length > 0) {
-
-                    fileName.textContent =
-                        "📎 " + this.files[0].name;
-
-                } else {
-
-                    fileName.textContent = "";
-
-                }
-
-            }
-        );
-
+    function setLanguage(lang) {
+        currentLanguage = lang;
+        localStorage.setItem("documentLanguage", lang);
+        document.body.classList.toggle("ta-mode", lang === "ta");
+        document.getElementById("englishBtn").classList.toggle("active", lang === "en");
+        document.getElementById("tamilBtn").classList.toggle("active", lang === "ta");
+        document.documentElement.lang = lang === "ta" ? "ta" : "en";
     }
 
+    function stopVoice() {
+        if ("speechSynthesis" in window) speechSynthesis.cancel();
+    }
 
+    function speakText(text, lang) {
+        if (!text || !("speechSynthesis" in window)) return;
+        speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang === "ta" ? "ta-IN" : "en-IN";
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        speechSynthesis.speak(utterance);
+    }
 
-    /* ============================================================
-       LOADING
-    ============================================================ */
+    function speakOCR(lang) {
+        const text = document.getElementById("ocrText")?.innerText || "";
+        speakText(text, lang);
+    }
 
-    function showLoading() {
-
-        const loading =
-            document.getElementById("loading");
-
-        if (loading) {
-
-            loading.style.display = "block";
-
+    function speakCourtOrder(lang) {
+        {% if result and result.court_order %}
+        let text = "";
+        {% if result.court_order.english_summary %}
+        if (lang === "en") {
+            text = {{ result.court_order.english_summary|join(" ")|tojson }};
         }
-
+        {% endif %}
+        {% if result.court_order.tamil_summary %}
+        if (lang === "ta") {
+            text = {{ result.court_order.tamil_summary|join(" ")|tojson }};
+        }
+        {% endif %}
+        speakText(text, lang);
+        {% endif %}
     }
 
+    document.addEventListener("DOMContentLoaded", () => {
+        setLanguage(currentLanguage);
 
+        const fileInput = document.getElementById("documentFile");
+        const fileName = document.getElementById("fileName");
 
-    /* ============================================================
-       LANGUAGE SYSTEM
-    ============================================================ */
-
-    let currentLanguage = "en";
-
-
-    function setLanguage(language) {
-
-        currentLanguage = language;
-
-
-        /* --------------------------------
-           English / Tamil content
-        -------------------------------- */
-
-        document
-            .querySelectorAll(".english-content")
-            .forEach(function (element) {
-
-                element.style.display =
-                    language === "en"
-                        ? ""
-                        : "none";
-
+        if (fileInput && fileName) {
+            fileInput.addEventListener("change", () => {
+                fileName.textContent = fileInput.files.length
+                    ? fileInput.files[0].name
+                    : "";
             });
-
-
-        document
-            .querySelectorAll(".tamil-content")
-            .forEach(function (element) {
-
-                element.style.display =
-                    language === "ta"
-                        ? ""
-                        : "none";
-
-            });
-
-
-        /* --------------------------------
-           Outcome
-        -------------------------------- */
-
-        document
-            .querySelectorAll(".outcome-en")
-            .forEach(function (element) {
-
-                element.style.display =
-                    language === "en"
-                        ? "inline"
-                        : "none";
-
-            });
-
-
-        document
-            .querySelectorAll(".outcome-ta")
-            .forEach(function (element) {
-
-                element.style.display =
-                    language === "ta"
-                        ? "inline"
-                        : "none";
-
-            });
-
-
-        /* --------------------------------
-           Buttons
-        -------------------------------- */
-
-        const englishBtn =
-            document.getElementById("englishBtn");
-
-        const tamilBtn =
-            document.getElementById("tamilBtn");
-
-
-        if (englishBtn) {
-
-            englishBtn.classList.toggle(
-                "active",
-                language === "en"
-            );
-
         }
-
-
-        if (tamilBtn) {
-
-            tamilBtn.classList.toggle(
-                "active",
-                language === "ta"
-            );
-
-        }
-
-
-        /* Stop voice when language changes */
-
-        stopSpeech();
-
-    }
-
-
-
-    /* ============================================================
-       SPEECH
-    ============================================================ */
-
-    let currentUtterance = null;
-
-
-    function findVoice(language) {
-
-        const voices =
-            window.speechSynthesis.getVoices();
-
-
-        if (!voices || voices.length === 0) {
-
-            return null;
-
-        }
-
-
-        /* Exact language match */
-
-        let voice =
-            voices.find(function (v) {
-
-                return v.lang.toLowerCase() ===
-                    language.toLowerCase();
-
-            });
-
-
-        if (voice) {
-
-            return voice;
-
-        }
-
-
-        /* Indian English fallback */
-
-        if (language === "en-IN") {
-
-            voice =
-                voices.find(function (v) {
-
-                    return v.lang
-                        .toLowerCase()
-                        .startsWith("en-in");
-
-                });
-
-            if (voice) {
-
-                return voice;
-
-            }
-
-        }
-
-
-        /* Tamil fallback */
-
-        if (language === "ta-IN") {
-
-            voice =
-                voices.find(function (v) {
-
-                    return v.lang
-                        .toLowerCase()
-                        .startsWith("ta");
-
-                });
-
-            if (voice) {
-
-                return voice;
-
-            }
-
-        }
-
-
-        /* Generic language */
-
-        const shortLanguage =
-            language.split("-")[0];
-
-
-        voice =
-            voices.find(function (v) {
-
-                return v.lang
-                    .toLowerCase()
-                    .startsWith(shortLanguage);
-
-            });
-
-
-        return voice || null;
-
-    }
-
-
-
-    /* ============================================================
-       SPEAK TEXT
-    ============================================================ */
-
-    function speakText(text, language) {
-
-        if (!("speechSynthesis" in window)) {
-
-            alert(
-                language === "ta-IN"
-                    ? "இந்த browser-ல் குரல் வசதி இல்லை."
-                    : "Speech synthesis is not supported in this browser."
-            );
-
-            return;
-
-        }
-
-
-        if (!text || text.trim() === "") {
-
-            return;
-
-        }
-
-
-        window.speechSynthesis.cancel();
-
-
-        currentUtterance =
-            new SpeechSynthesisUtterance(text);
-
-
-        currentUtterance.lang = language;
-
-
-        const voice =
-            findVoice(language);
-
-
-        if (voice) {
-
-            currentUtterance.voice = voice;
-
-        }
-
-
-        currentUtterance.rate = 0.9;
-
-        currentUtterance.pitch = 1.0;
-
-        currentUtterance.volume = 1.0;
-
-
-        window.speechSynthesis.speak(
-            currentUtterance
-        );
-
-    }
-
-
-
-    /* ============================================================
-       ENGLISH VOICE
-    ============================================================ */
-
-    function speakEnglish() {
-
-        const element =
-            document.getElementById(
-                "englishSummary"
-            );
-
-
-        if (!element) {
-
-            return;
-
-        }
-
-
-        const text =
-            element.innerText;
-
-
-        speakText(
-            text,
-            "en-IN"
-        );
-
-    }
-
-
-
-    /* ============================================================
-       TAMIL VOICE
-    ============================================================ */
-
-    function speakTamil() {
-
-        const element =
-            document.getElementById(
-                "tamilSummary"
-            );
-
-
-        if (!element) {
-
-            return;
-
-        }
-
-
-        const text =
-            element.innerText;
-
-
-        const tamilVoice =
-            findVoice("ta-IN");
-
-
-        if (!tamilVoice) {
-
-            alert(
-                "தமிழ் குரல் browser / Windows-ல் " +
-                "install செய்யப்படவில்லை.\n\n" +
-                "Windows Tamil speech voice " +
-                "install செய்த பிறகு மீண்டும் முயற்சிக்கவும்."
-            );
-
-            return;
-
-        }
-
-
-        speakText(
-            text,
-            "ta-IN"
-        );
-
-    }
-
-
-
-    /* ============================================================
-       PAUSE
-    ============================================================ */
-
-    function pauseSpeech() {
-
-        if (
-            "speechSynthesis" in window &&
-            window.speechSynthesis.speaking
-        ) {
-
-            window.speechSynthesis.pause();
-
-        }
-
-    }
-
-
-
-    /* ============================================================
-       RESUME
-    ============================================================ */
-
-    function resumeSpeech() {
-
-        if (
-            "speechSynthesis" in window &&
-            window.speechSynthesis.paused
-        ) {
-
-            window.speechSynthesis.resume();
-
-        }
-
-    }
-
-
-
-    /* ============================================================
-       STOP
-    ============================================================ */
-
-    function stopSpeech() {
-
-        if ("speechSynthesis" in window) {
-
-            window.speechSynthesis.cancel();
-
-        }
-
-        currentUtterance = null;
-
-    }
-
-
-
-    /* ============================================================
-       VOICE LIST
-    ============================================================ */
-
-    if ("speechSynthesis" in window) {
-
-        window.speechSynthesis.onvoiceschanged =
-            function () {
-
-                window.speechSynthesis
-                    .getVoices();
-
-            };
-
-    }
-
-
-
-    /* ============================================================
-       INITIAL LANGUAGE
-    ============================================================ */
-
-    document.addEventListener(
-        "DOMContentLoaded",
-        function () {
-
-            setLanguage("en");
-
-        }
-    );
-
+    });
 </script>
 
 </body>
-
 </html>
