@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scheme Recommendation</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f5f7fb;color:#172033}
+.container{max-width:1050px;margin:auto;padding:28px 18px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.back{color:#3157d5;text-decoration:none;font-weight:700}.lang button{border:1px solid #ccd3e0;background:#fff;padding:8px 13px;border-radius:20px;cursor:pointer}
+.lang button.active{background:#3157d5;color:#fff}.hero{background:linear-gradient(135deg,#3157d5,#6b45c9);color:#fff;border-radius:22px;padding:30px;margin-bottom:22px}
+.hero h1{margin:0 0 8px}.card{background:#fff;border-radius:18px;padding:22px;margin-bottom:18px;box-shadow:0 5px 18px rgba(30,40,70,.07)}
+.category-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.cat{border:1px solid #dce1ea;background:#fff;border-radius:14px;padding:16px;text-align:left;cursor:pointer}
+.cat.selected{border:2px solid #3157d5;background:#f0f4ff}.icon{font-size:26px;display:block;margin-bottom:7px}.small{color:#657085;font-size:14px}
+.question{margin:18px 0}.question label{display:block;font-weight:700;margin-bottom:9px}
+select{width:100%;padding:12px;border:1px solid #ccd3df;border-radius:10px;background:#fff;font-size:15px}
+.btn{border:0;border-radius:11px;padding:13px 20px;background:#3157d5;color:#fff;font-weight:700;cursor:pointer;margin-top:10px}
+.btn:disabled{opacity:.5}.result{border:1px solid #e0e4ec;border-radius:15px;padding:18px;margin:13px 0}
+.result h3{margin:0 0 5px}.badge{display:inline-block;background:#eef2ff;color:#3157d5;border-radius:20px;padding:5px 9px;font-size:12px;margin:3px}
+.result ul{padding-left:20px}.source{display:inline-block;margin-top:8px;color:#3157d5;font-weight:700}
+.note{background:#fff7df;border-left:4px solid #e5a500;padding:12px 14px;border-radius:8px;color:#664d00}
+.hidden{display:none}.loading{text-align:center;color:#667085}.error{background:#ffe8e8;color:#9d2222;padding:12px;border-radius:10px}
+.en,.ta{display:none}.show-en .en{display:inline}.show-ta .ta{display:inline}
+@media(max-width:600px){.top{align-items:flex-start}}
+</style>
+</head>
+<body class="show-en">
+<div class="container">
+<div class="top">
+<a class="back" href="/">← <span class="en">Back to Document Assistant</span><span class="ta">ஆவண உதவியாளருக்குத் திரும்ப</span></a>
+<div class="lang"><button id="enBtn" class="active" onclick="setLang('en')">English</button><button id="taBtn" onclick="setLang('ta')">தமிழ்</button></div>
+</div>
+
+<section class="hero">
+<h1>🎯 <span class="en">Scheme Recommendation</span><span class="ta">அரசு நலத்திட்ட பரிந்துரை</span></h1>
+<p class="en">Answer a few questions and find schemes that may be relevant to you.</p>
+<p class="ta">சில கேள்விகளுக்கு பதிலளியுங்கள். உங்களுக்கு பொருத்தமாக இருக்கக்கூடிய நலத்திட்டங்களை கண்டறியலாம்.</p>
+</section>
+
+<section class="card">
+<h2>1. <span class="en">What kind of support are you looking for?</span><span class="ta">எந்த வகையான உதவி தேவை?</span></h2>
+<div class="category-grid" id="categories"></div>
+</section>
+
+<section class="card hidden" id="questionsCard">
+<h2>2. <span class="en">Tell us a little more</span><span class="ta">மேலும் சில தகவல்கள்</span></h2>
+<div id="questions"></div>
+<div class="question">
+<label><span class="en">Which state/UT do you live in?</span><span class="ta">நீங்கள் எந்த மாநிலம் / யூனியன் பிரதேசத்தில் வசிக்கிறீர்கள்?</span></label>
+<select id="state"><option value="">Select state / UT</option>
+<option>Tamil Nadu</option><option>Puducherry</option><option>Kerala</option><option>Karnataka</option>
+<option>Andhra Pradesh</option><option>Telangana</option><option>Gujarat</option><option>Goa</option>
+<option>Haryana</option><option>Rajasthan</option><option>Madhya Pradesh</option><option>Maharashtra</option>
+<option>Odisha</option><option>West Bengal</option><option>Bihar</option><option>Jharkhand</option>
+<option>Chhattisgarh</option><option>Uttarakhand</option><option>Other</option></select>
+</div>
+<button class="btn" id="findBtn" onclick="findSchemes()">🔎 <span class="en">Find Matching Schemes</span><span class="ta">பொருத்தமான திட்டங்களை தேடு</span></button>
+</section>
+
+<section class="card hidden" id="resultsCard">
+<h2>3. <span class="en">Possible Matches</span><span class="ta">பொருத்தமாக இருக்கக்கூடிய திட்டங்கள்</span></h2>
+<div class="note"><span class="en">Preliminary matching only. Eligibility is not confirmed. Check the official source for current rules.</span>
+<span class="ta">இது ஆரம்பகட்ட பொருத்தம் மட்டுமே. தகுதி உறுதி செய்யப்படவில்லை. அதிகாரப்பூர்வ தளத்தில் தற்போதைய விதிகளை சரிபார்க்கவும்.</span></div>
+<div id="results"></div>
+</section>
+</div>
+
+<script>
+const categoryData={{categories|tojson}};
+const icons={agriculture:"🌾",education:"🎓",women_child:"👩‍👧",employment:"💼",business:"🏢",finance:"💰",housing:"🏠",health:"🏥",senior:"👴",disability:"♿",other:"📋"};
+let selectedCategory="";
+function setLang(l){document.body.className=l==="ta"?"show-ta":"show-en";enBtn.classList.toggle("active",l==="en");taBtn.classList.toggle("active",l==="ta");localStorage.setItem("schemeLang",l)}
+setLang(localStorage.getItem("schemeLang")||"en");
+function renderCategories(){const box=document.getElementById("categories");Object.entries(categoryData).forEach(([k,c])=>{const b=document.createElement("button");b.className="cat";b.dataset.key=k;b.innerHTML=`<span class="icon">${icons[k]||"📋"}</span><strong>${c.en}</strong><br><span class="small">${c.ta}</span>`;b.onclick=()=>selectCategory(k);box.appendChild(b)})}
+async function selectCategory(k){selectedCategory=k;document.querySelectorAll(".cat").forEach(x=>x.classList.toggle("selected",x.dataset.key===k));questionsCard.classList.remove("hidden");questions.innerHTML='<div class="loading">Loading questions...</div>';const r=await fetch(`/schemes/api/questions/${k}`);const d=await r.json();renderQuestions(d.questions||[]);questionsCard.scrollIntoView({behavior:"smooth"})}
+function renderQuestions(qs){questions.innerHTML="";qs.forEach(q=>{const d=document.createElement("div");d.className="question";d.innerHTML=`<label>${q.en}<br><span class="small">${q.ta}</span></label><select id="q_${q.id}" data-question="${q.id}"><option value="">Select an answer</option>${q.options.map(o=>`<option value="${o[0]}">${o[1]} — ${o[2]}</option>`).join("")}</select>`;questions.appendChild(d)})}
+async function findSchemes(){if(!selectedCategory)return;const answers={state:document.getElementById("state").value};document.querySelectorAll("#questions select").forEach(s=>answers[s.dataset.question]=s.value);findBtn.disabled=true;const r=await fetch("/schemes/api/match",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({category:selectedCategory,answers})});const d=await r.json();findBtn.disabled=false;resultsCard.classList.remove("hidden");if(!r.ok){results.innerHTML=`<div class="error">${d.error||"Unable to find schemes."}</div>`;return}if(!d.results.length){results.innerHTML='<div class="error">No strong matches were found. Try another category or answer combination.</div>';return}results.innerHTML=d.results.map(s=>`<article class="result"><h3>${e(s.name)}</h3>${s.short_title?`<span class="badge">${e(s.short_title)}</span>`:""}${s.state?`<span class="badge">${e(s.state)}</span>`:""}${s.category?`<span class="badge">${e(s.category)}</span>`:""}<p>${e(s.description)}</p>${s.benefits.length?`<strong>Benefits / நன்மைகள்</strong><ul>${s.benefits.map(x=>`<li>${e(x)}</li>`).join("")}</ul>`:""}${s.eligibility.length?`<strong>Eligibility / தகுதி தகவல்</strong><ul>${s.eligibility.map(x=>`<li>${e(x)}</li>`).join("")}</ul>`:""}${s.documents.length?`<strong>Documents / ஆவணங்கள்</strong><ul>${s.documents.map(x=>`<li>${e(x)}</li>`).join("")}</ul>`:""}${s.source_url?`<a class="source" href="${e(s.source_url)}" target="_blank" rel="noopener">🔗 Official scheme source</a>`:""}</article>`).join("");resultsCard.scrollIntoView({behavior:"smooth"})}
+function e(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+renderCategories();
+</script>
+</body></html>

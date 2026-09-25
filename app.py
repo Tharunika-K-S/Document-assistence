@@ -8,13 +8,14 @@ import numpy as np
 import pytesseract
 
 from PIL import Image
-
+from scheme_recommendation import scheme_bp
 
 # ============================================================
 # FLASK CONFIGURATION
 # ============================================================
 
 app = Flask(__name__)
+app.register_blueprint(scheme_bp)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 

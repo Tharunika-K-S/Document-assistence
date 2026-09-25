@@ -1,433 +1,2073 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Government Document Assistant</title>
+
     <style>
-        * { box-sizing: border-box; }
+
+        /* ============================================================
+           GLOBAL
+        ============================================================ */
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: "Segoe UI", "Noto Sans Tamil", Arial, sans-serif;
             background: linear-gradient(135deg, #eef4ff, #f8fbff);
             color: #172033;
         }
+
+
+        /* ============================================================
+           TOP BAR
+        ============================================================ */
+
         .topbar {
             position: sticky;
             top: 0;
             z-index: 10;
-            background: linear-gradient(90deg, #101d45, #21469d);
+
+            background: linear-gradient(
+                90deg,
+                #101d45,
+                #21469d
+            );
+
             color: white;
             padding: 14px 20px;
+
             box-shadow: 0 3px 14px rgba(0,0,0,.16);
         }
+
+
         .topbar-inner {
             max-width: 980px;
             margin: auto;
+
             display: flex;
             justify-content: space-between;
             align-items: center;
+
             gap: 16px;
         }
-        .brand { font-weight: 700; font-size: 18px; }
-        .brand small { display:block; font-size:11px; opacity:.8; margin-top:2px; }
-        .lang-switch { display:flex; gap:6px; }
+
+
+        .brand {
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+
+        .brand small {
+            display: block;
+            font-size: 11px;
+            opacity: .8;
+            margin-top: 2px;
+        }
+
+
+        /* ============================================================
+           LANGUAGE BUTTONS
+        ============================================================ */
+
+        .lang-switch {
+            display: flex;
+            gap: 6px;
+        }
+
+
         .lang-btn {
             border: 1px solid rgba(255,255,255,.5);
+
             background: rgba(255,255,255,.12);
-            color:#fff;
-            padding:7px 12px;
-            border-radius:20px;
-            cursor:pointer;
-            font-size:13px;
+
+            color: #fff;
+
+            padding: 7px 12px;
+
+            border-radius: 20px;
+
+            cursor: pointer;
+
+            font-size: 13px;
         }
-        .lang-btn.active { background:#fff; color:#173a91; font-weight:700; }
-        .container { max-width: 980px; margin: 28px auto 60px; padding: 0 16px; }
+
+
+        .lang-btn.active {
+            background: #fff;
+            color: #173a91;
+            font-weight: 700;
+        }
+
+
+        /* ============================================================
+           CONTAINER
+        ============================================================ */
+
+        .container {
+            max-width: 980px;
+
+            margin: 28px auto 60px;
+
+            padding: 0 16px;
+        }
+
+
+        /* ============================================================
+           CARD
+        ============================================================ */
+
         .card {
-            background:#fff;
-            border-radius:16px;
-            padding:20px;
-            margin-bottom:18px;
-            box-shadow:0 5px 22px rgba(33,60,110,.09);
-            border:1px solid #e5ebf5;
+            background: #fff;
+
+            border-radius: 16px;
+
+            padding: 20px;
+
+            margin-bottom: 18px;
+
+            box-shadow:
+                0 5px 22px rgba(33,60,110,.09);
+
+            border: 1px solid #e5ebf5;
         }
-        h1,h2,h3 { margin-top:0; }
-        h1 { font-size:23px; color:#163b91; }
-        h2 { font-size:18px; color:#173a91; }
-        .sub { color:#667085; font-size:13px; line-height:1.6; }
+
+
+        h1,
+        h2,
+        h3 {
+            margin-top: 0;
+        }
+
+
+        h1 {
+            font-size: 23px;
+            color: #163b91;
+        }
+
+
+        h2 {
+            font-size: 18px;
+            color: #173a91;
+        }
+
+
+        .sub {
+            color: #667085;
+
+            font-size: 13px;
+
+            line-height: 1.6;
+        }
+
+
+        /* ============================================================
+           SCHEME RECOMMENDATION CARD
+        ============================================================ */
+
+        .scheme-card {
+            text-align: center;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #f5f8ff,
+                    #ffffff
+                );
+
+            border: 1px solid #cfdcff;
+        }
+
+
+        .scheme-card h2 {
+            color: #173a91;
+
+            margin-bottom: 8px;
+        }
+
+
+        .scheme-btn {
+            display: inline-block;
+
+            margin-top: 10px;
+
+            padding: 12px 22px;
+
+            background: #2860df;
+
+            color: white;
+
+            text-decoration: none;
+
+            border-radius: 9px;
+
+            font-weight: 700;
+
+            transition: 0.2s;
+        }
+
+
+        .scheme-btn:hover {
+            background: #1e4fc0;
+
+            transform: translateY(-1px);
+        }
+
+
+        /* ============================================================
+           UPLOAD BOX
+        ============================================================ */
+
         .upload-box {
-            border:2px dashed #79a7ff;
-            border-radius:14px;
-            padding:34px 20px;
-            text-align:center;
-            background:#f8fbff;
+            border: 2px dashed #79a7ff;
+
+            border-radius: 14px;
+
+            padding: 34px 20px;
+
+            text-align: center;
+
+            background: #f8fbff;
         }
-        .upload-icon { font-size:38px; }
-        input[type=file] { margin:18px 0; max-width:100%; }
+
+
+        .upload-icon {
+            font-size: 38px;
+        }
+
+
+        input[type=file] {
+            margin: 18px 0;
+
+            max-width: 100%;
+        }
+
+
+        /* ============================================================
+           PRIMARY BUTTON
+        ============================================================ */
+
         .primary {
-            border:0;
-            background:#2860df;
-            color:white;
-            border-radius:8px;
-            padding:12px 22px;
-            cursor:pointer;
-            font-weight:700;
+            border: 0;
+
+            background: #2860df;
+
+            color: white;
+
+            border-radius: 8px;
+
+            padding: 12px 22px;
+
+            cursor: pointer;
+
+            font-weight: 700;
         }
-        .primary:hover { background:#1e4fc0; }
+
+
+        .primary:hover {
+            background: #1e4fc0;
+        }
+
+
+        /* ============================================================
+           ERROR
+        ============================================================ */
+
         .error {
-            background:#fff0f0;
-            border:1px solid #ffc5c5;
-            color:#a61b1b;
-            padding:12px 14px;
-            border-radius:10px;
-            margin-bottom:18px;
+            background: #fff0f0;
+
+            border: 1px solid #ffc5c5;
+
+            color: #a61b1b;
+
+            padding: 12px 14px;
+
+            border-radius: 10px;
+
+            margin-bottom: 18px;
         }
-        .result-title { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+
+
+        /* ============================================================
+           RESULT TITLE
+        ============================================================ */
+
+        .result-title {
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 12px;
+
+            flex-wrap: wrap;
+        }
+
+
+        /* ============================================================
+           BADGE
+        ============================================================ */
+
         .badge {
-            display:inline-block;
-            background:#edf3ff;
-            color:#1946a2;
-            padding:7px 11px;
-            border-radius:20px;
-            font-size:12px;
-            font-weight:700;
+            display: inline-block;
+
+            background: #edf3ff;
+
+            color: #1946a2;
+
+            padding: 7px 11px;
+
+            border-radius: 20px;
+
+            font-size: 12px;
+
+            font-weight: 700;
         }
-        .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:15px; }
-        .stat { background:#f8fafc; border:1px solid #e7ebf1; border-radius:12px; padding:14px; text-align:center; }
-        .stat-label { font-size:11px; color:#667085; }
-        .stat-value { font-weight:800; color:#173a91; margin-top:5px; }
-        .fields-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+
+
+        /* ============================================================
+           STATISTICS
+        ============================================================ */
+
+        .stats {
+            display: grid;
+
+            grid-template-columns: repeat(3,1fr);
+
+            gap: 12px;
+
+            margin-top: 15px;
+        }
+
+
+        .stat {
+            background: #f8fafc;
+
+            border: 1px solid #e7ebf1;
+
+            border-radius: 12px;
+
+            padding: 14px;
+
+            text-align: center;
+        }
+
+
+        .stat-label {
+            font-size: 11px;
+
+            color: #667085;
+        }
+
+
+        .stat-value {
+            font-weight: 800;
+
+            color: #173a91;
+
+            margin-top: 5px;
+        }
+
+
+        /* ============================================================
+           FIELDS
+        ============================================================ */
+
+        .fields-grid {
+            display: grid;
+
+            grid-template-columns: repeat(2,1fr);
+
+            gap: 12px;
+        }
+
+
         .field {
-            border:1px solid #dfe6f0;
-            background:#fbfcfe;
-            border-radius:10px;
-            padding:13px;
-            min-height:75px;
+            border: 1px solid #dfe6f0;
+
+            background: #fbfcfe;
+
+            border-radius: 10px;
+
+            padding: 13px;
+
+            min-height: 75px;
         }
-        .field-label { font-size:12px; color:#59708e; font-weight:700; margin-bottom:5px; }
-        .field-label .ta { display:none; }
-        .field-value { font-size:14px; color:#172033; white-space:pre-wrap; overflow-wrap:anywhere; }
-        .not-detected { color:#8993a4; font-style:italic; }
+
+
+        .field-label {
+            font-size: 12px;
+
+            color: #59708e;
+
+            font-weight: 700;
+
+            margin-bottom: 5px;
+        }
+
+
+        .field-label .ta {
+            display: none;
+        }
+
+
+        .field-value {
+            font-size: 14px;
+
+            color: #172033;
+
+            white-space: pre-wrap;
+
+            overflow-wrap: anywhere;
+        }
+
+
+        .not-detected {
+            color: #8993a4;
+
+            font-style: italic;
+        }
+
+
+        /* ============================================================
+           OCR
+        ============================================================ */
+
         .ocr {
-            background:#10182b;
-            color:#edf2ff;
-            padding:16px;
-            border-radius:10px;
-            white-space:pre-wrap;
-            overflow:auto;
-            max-height:430px;
-            font-size:13px;
-            line-height:1.55;
+            background: #10182b;
+
+            color: #edf2ff;
+
+            padding: 16px;
+
+            border-radius: 10px;
+
+            white-space: pre-wrap;
+
+            overflow: auto;
+
+            max-height: 430px;
+
+            font-size: 13px;
+
+            line-height: 1.55;
         }
-        .processed-wrap { text-align:center; }
+
+
+        /* ============================================================
+           PROCESSED IMAGE
+        ============================================================ */
+
+        .processed-wrap {
+            text-align: center;
+        }
+
+
         .processed-img {
-            max-width:100%;
-            max-height:800px;
-            border-radius:10px;
-            border:1px solid #ccd5e3;
+            max-width: 100%;
+
+            max-height: 800px;
+
+            border-radius: 10px;
+
+            border: 1px solid #ccd5e3;
         }
-        .court-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
-        .summary-box { background:#f8fbff; border-left:4px solid #2860df; padding:15px; border-radius:8px; line-height:1.65; }
-        .summary-box p { margin:0 0 8px; }
-        .voice-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-        .secondary { background:#eef3fb; color:#173a91; border:1px solid #d6e0f2; padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:600; }
-        .warning { background:#fff9e8; border:1px solid #f3d477; color:#795900; padding:13px 15px; border-radius:10px; font-size:12px; line-height:1.5; }
-        footer { text-align:center; color:#8a94a6; font-size:11px; margin-top:30px; }
-        .ta-mode .en { display:none !important; }
-        .ta-mode .ta { display:inline !important; }
-        .ta-mode .en-block { display:none !important; }
-        .ta-mode .ta-block { display:block !important; }
-        .ta-block { display:none; }
+
+
+        /* ============================================================
+           COURT ORDER
+        ============================================================ */
+
+        .court-grid {
+            display: grid;
+
+            grid-template-columns: repeat(2,1fr);
+
+            gap: 12px;
+        }
+
+
+        .summary-box {
+            background: #f8fbff;
+
+            border-left: 4px solid #2860df;
+
+            padding: 15px;
+
+            border-radius: 8px;
+
+            line-height: 1.65;
+        }
+
+
+        .summary-box p {
+            margin: 0 0 8px;
+        }
+
+
+        /* ============================================================
+           VOICE BUTTONS
+        ============================================================ */
+
+        .voice-row {
+            display: flex;
+
+            gap: 10px;
+
+            flex-wrap: wrap;
+
+            margin-top: 12px;
+        }
+
+
+        .secondary {
+            background: #eef3fb;
+
+            color: #173a91;
+
+            border: 1px solid #d6e0f2;
+
+            padding: 10px 15px;
+
+            border-radius: 8px;
+
+            cursor: pointer;
+
+            font-weight: 600;
+        }
+
+
+        .secondary:hover {
+            background: #e3ebfa;
+        }
+
+
+        /* ============================================================
+           WARNING
+        ============================================================ */
+
+        .warning {
+            background: #fff9e8;
+
+            border: 1px solid #f3d477;
+
+            color: #795900;
+
+            padding: 13px 15px;
+
+            border-radius: 10px;
+
+            font-size: 12px;
+
+            line-height: 1.5;
+        }
+
+
+        /* ============================================================
+           FOOTER
+        ============================================================ */
+
+        footer {
+            text-align: center;
+
+            color: #8a94a6;
+
+            font-size: 11px;
+
+            margin-top: 30px;
+        }
+
+
+        /* ============================================================
+           LANGUAGE MODE
+        ============================================================ */
+
+        .ta-mode .en {
+            display: none !important;
+        }
+
+
+        .ta-mode .ta {
+            display: inline !important;
+        }
+
+
+        .ta-mode .en-block {
+            display: none !important;
+        }
+
+
+        .ta-mode .ta-block {
+            display: block !important;
+        }
+
+
+        .ta-block {
+            display: none;
+        }
+
+
+        /* ============================================================
+           MOBILE
+        ============================================================ */
+
         @media (max-width:700px) {
-            .stats,.fields-grid,.court-grid { grid-template-columns:1fr; }
-            .topbar-inner { align-items:flex-start; flex-direction:column; }
-            .container { margin-top:18px; }
+
+            .stats,
+            .fields-grid,
+            .court-grid {
+                grid-template-columns: 1fr;
+            }
+
+
+            .topbar-inner {
+                align-items: flex-start;
+
+                flex-direction: column;
+            }
+
+
+            .container {
+                margin-top: 18px;
+            }
+
+
+            .scheme-btn {
+                width: 100%;
+
+                max-width: 320px;
+            }
         }
+
     </style>
+
 </head>
+
+
 <body>
 
+
+<!-- ============================================================
+     TOP BAR
+============================================================ -->
+
 <header class="topbar">
+
     <div class="topbar-inner">
+
         <div class="brand">
+
             📄 Government Document Assistant
-            <small>Tamil + English Document Readability & Understanding</small>
+
+            <small>
+                Tamil + English Document Readability & Understanding
+            </small>
+
         </div>
+
+
         <div class="lang-switch">
-            <button id="englishBtn" class="lang-btn active" onclick="setLanguage('en')">🇬🇧 English</button>
-            <button id="tamilBtn" class="lang-btn" onclick="setLanguage('ta')">🇮🇳 தமிழ்</button>
+
+            <button
+                id="englishBtn"
+                class="lang-btn active"
+                onclick="setLanguage('en')">
+
+                🇬🇧 English
+
+            </button>
+
+
+            <button
+                id="tamilBtn"
+                class="lang-btn"
+                onclick="setLanguage('ta')">
+
+                🇮🇳 தமிழ்
+
+            </button>
+
         </div>
+
     </div>
+
 </header>
+
+
+
+<!-- ============================================================
+     MAIN
+============================================================ -->
 
 <main class="container">
 
-    <section class="card">
-        <div class="en-block">
-            <h1>Government Document Understanding Assistant</h1>
-            <p class="sub">Upload a government document image. The system uses Tamil + English OCR, identifies the document type, extracts important fields and provides a simple explanation.</p>
-        </div>
-        <div class="ta-block">
-            <h1>அரசு ஆவணங்களைப் புரிந்துகொள்ளும் உதவியாளர்</h1>
-            <p class="sub">அரசு ஆவணத்தின் படத்தை பதிவேற்றுங்கள். தமிழ் + ஆங்கில OCR மூலம் ஆவண வகையை கண்டறிந்து முக்கிய தகவல்களைப் பிரித்தெடுக்கிறது.</p>
-        </div>
-    </section>
+
+    <!-- ========================================================
+         INTRODUCTION
+    ========================================================= -->
 
     <section class="card">
-        <form method="POST" enctype="multipart/form-data">
-            <div class="upload-box">
-                <div class="upload-icon">📤</div>
-                <div class="en-block">
-                    <strong>Upload Government Document</strong>
-                    <div class="sub">Supported formats: PNG, JPG, JPEG</div>
-                </div>
-                <div class="ta-block">
-                    <strong>அரசு ஆவணத்தை பதிவேற்றவும்</strong>
-                    <div class="sub">ஆதரிக்கப்படும் வடிவங்கள்: PNG, JPG, JPEG</div>
-                </div>
-                <input id="documentFile" type="file" name="file" accept=".png,.jpg,.jpeg" required>
-                <div id="fileName" class="sub" style="margin-top:-8px;"></div>
-                <br>
-                <button class="primary" type="submit">
-                    <span class="en">🔎 Process Document</span>
-                    <span class="ta">🔎 ஆவணத்தை செயலாக்கு</span>
-                </button>
-            </div>
-        </form>
+
+        <div class="en-block">
+
+            <h1>
+                Government Document Understanding Assistant
+            </h1>
+
+            <p class="sub">
+                Upload a government document image.
+                The system uses Tamil + English OCR,
+                identifies the document type,
+                extracts important fields and provides
+                a simple explanation.
+            </p>
+
+        </div>
+
+
+        <div class="ta-block">
+
+            <h1>
+                அரசு ஆவணங்களைப் புரிந்துகொள்ளும் உதவியாளர்
+            </h1>
+
+            <p class="sub">
+                அரசு ஆவணத்தின் படத்தை பதிவேற்றுங்கள்.
+                தமிழ் + ஆங்கில OCR மூலம் ஆவண வகையை
+                கண்டறிந்து முக்கிய தகவல்களைப் பிரித்தெடுக்கிறது.
+            </p>
+
+        </div>
+
     </section>
+
+
+
+    <!-- ========================================================
+         GOVERNMENT SCHEME RECOMMENDATION
+    ========================================================= -->
+
+    <section class="card scheme-card">
+
+
+        <!-- English -->
+
+        <div class="en-block">
+
+            <h2>
+                🎯 Government Scheme Recommendation
+            </h2>
+
+
+            <p class="sub">
+
+                Answer a few questions and find government
+                schemes that may be relevant to you.
+
+            </p>
+
+
+            <a
+                href="/schemes/"
+                class="scheme-btn">
+
+                🎯 Find Government Schemes
+
+            </a>
+
+        </div>
+
+
+
+        <!-- Tamil -->
+
+        <div class="ta-block">
+
+            <h2>
+                🎯 அரசு நலத்திட்ட பரிந்துரை
+            </h2>
+
+
+            <p class="sub">
+
+                சில கேள்விகளுக்கு பதிலளித்து,
+                உங்களுக்கு பொருத்தமாக இருக்கக்கூடிய
+                அரசு நலத்திட்டங்களை கண்டறியுங்கள்.
+
+            </p>
+
+
+            <a
+                href="/schemes/"
+                class="scheme-btn">
+
+                🎯 அரசு நலத்திட்டங்களை கண்டறிய
+
+            </a>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- ========================================================
+         DOCUMENT UPLOAD
+    ========================================================= -->
+
+    <section class="card">
+
+        <form
+            method="POST"
+            enctype="multipart/form-data">
+
+
+            <div class="upload-box">
+
+
+                <div class="upload-icon">
+                    📤
+                </div>
+
+
+
+                <!-- English -->
+
+                <div class="en-block">
+
+                    <strong>
+                        Upload Government Document
+                    </strong>
+
+                    <div class="sub">
+                        Supported formats:
+                        PNG, JPG, JPEG
+                    </div>
+
+                </div>
+
+
+
+                <!-- Tamil -->
+
+                <div class="ta-block">
+
+                    <strong>
+                        அரசு ஆவணத்தை பதிவேற்றவும்
+                    </strong>
+
+                    <div class="sub">
+
+                        ஆதரிக்கப்படும் வடிவங்கள்:
+                        PNG, JPG, JPEG
+
+                    </div>
+
+                </div>
+
+
+
+                <input
+                    id="documentFile"
+                    type="file"
+                    name="file"
+                    accept=".png,.jpg,.jpeg"
+                    required>
+
+
+
+                <div
+                    id="fileName"
+                    class="sub"
+                    style="margin-top:-8px;">
+                </div>
+
+
+                <br>
+
+
+
+                <button
+                    class="primary"
+                    type="submit">
+
+                    <span class="en">
+                        🔎 Process Document
+                    </span>
+
+                    <span class="ta">
+                        🔎 ஆவணத்தை செயலாக்கு
+                    </span>
+
+                </button>
+
+
+            </div>
+
+        </form>
+
+    </section>
+
+
+
+    <!-- ========================================================
+         ERROR
+    ========================================================= -->
 
     {% if error %}
-    <div class="error">⚠️ {{ error }}</div>
+
+    <div class="error">
+
+        ⚠️ {{ error }}
+
+    </div>
+
     {% endif %}
+
+
+
+    <!-- ========================================================
+         RESULT
+    ========================================================= -->
 
     {% if result %}
+
+
+    <!-- ========================================================
+         DOCUMENT ANALYSIS RESULT
+    ========================================================= -->
+
     <section class="card">
+
+
         <div class="result-title">
-            <h2>📋 <span class="en">Document Analysis Result</span><span class="ta">ஆவண பகுப்பாய்வு முடிவு</span></h2>
+
+
+            <h2>
+
+                📋
+
+                <span class="en">
+                    Document Analysis Result
+                </span>
+
+                <span class="ta">
+                    ஆவண பகுப்பாய்வு முடிவு
+                </span>
+
+            </h2>
+
+
+
             <div class="badge">
-                <span class="en">{{ result.document_type }}</span>
-                <span class="ta">{{ result.document_type_ta }}</span>
+
+                <span class="en">
+                    {{ result.document_type }}
+                </span>
+
+                <span class="ta">
+                    {{ result.document_type_ta }}
+                </span>
+
             </div>
+
+
         </div>
+
+
 
         <div class="stats">
+
+
             <div class="stat">
-                <div class="stat-label"><span class="en">OCR Confidence</span><span class="ta">OCR நம்பகத்தன்மை</span></div>
-                <div class="stat-value">{{ result.confidence }}%</div>
+
+                <div class="stat-label">
+
+                    <span class="en">
+                        OCR Confidence
+                    </span>
+
+                    <span class="ta">
+                        OCR நம்பகத்தன்மை
+                    </span>
+
+                </div>
+
+
+                <div class="stat-value">
+
+                    {{ result.confidence }}%
+
+                </div>
+
             </div>
+
+
+
             <div class="stat">
-                <div class="stat-label"><span class="en">OCR Quality</span><span class="ta">OCR தரம்</span></div>
-                <div class="stat-value">{{ result.quality }}</div>
+
+                <div class="stat-label">
+
+                    <span class="en">
+                        OCR Quality
+                    </span>
+
+                    <span class="ta">
+                        OCR தரம்
+                    </span>
+
+                </div>
+
+
+                <div class="stat-value">
+
+                    {{ result.quality }}
+
+                </div>
+
             </div>
+
+
+
             <div class="stat">
-                <div class="stat-label"><span class="en">Classification</span><span class="ta">ஆவண வகை நம்பகத்தன்மை</span></div>
-                <div class="stat-value">{{ result.classification_confidence }}%</div>
+
+                <div class="stat-label">
+
+                    <span class="en">
+                        Classification
+                    </span>
+
+                    <span class="ta">
+                        ஆவண வகை நம்பகத்தன்மை
+                    </span>
+
+                </div>
+
+
+                <div class="stat-value">
+
+                    {{ result.classification_confidence }}%
+
+                </div>
+
             </div>
+
+
         </div>
+
     </section>
 
+
+
+    <!-- ========================================================
+         EXTRACTED INFORMATION
+    ========================================================= -->
+
     <section class="card">
-        <h2>📌 <span class="en">Extracted Information</span><span class="ta">பிரித்தெடுக்கப்பட்ட தகவல்கள்</span></h2>
+
+
+        <h2>
+
+            📌
+
+            <span class="en">
+                Extracted Information
+            </span>
+
+            <span class="ta">
+                பிரித்தெடுக்கப்பட்ட தகவல்கள்
+            </span>
+
+        </h2>
+
+
+
         <div class="fields-grid">
+
+
             {% if result.fields_i18n %}
+
+
                 {% for field in result.fields_i18n %}
+
+
                 <div class="field">
+
+
                     <div class="field-label">
-                        <span class="en">{{ field.label_en }}</span>
-                        <span class="ta">{{ field.label_ta }}</span>
-                    </div>
-                    <div class="field-value {% if field.value == 'Not detected' %}not-detected{% endif %}">{{ field.value }}</div>
-                </div>
-                {% endfor %}
-            {% elif result.fields %}
-                {% for key, value in result.fields.items() %}
-                <div class="field">
-                    <div class="field-label">
-                        <span class="en">{{ key }}</span>
-                        <span class="ta">
-                            {% set tamil_labels = {
-                                "Name": "பெயர்",
-                                "Father's Name": "தந்தையின் பெயர்",
-                                "Mother's Name": "தாயின் பெயர்",
-                                "Date of Birth": "பிறந்த தேதி",
-                                "Place of Birth": "பிறந்த இடம்",
-                                "Name of Deceased": "இறந்தவரின் பெயர்",
-                                "Date of Death": "இறந்த தேதி",
-                                "Place of Death": "இறந்த இடம்",
-                                "Father / Husband Name": "தந்தை / கணவர் பெயர்",
-                                "Father / Mother Name": "தந்தை / தாய் பெயர்",
-                                "Annual Income": "ஆண்டு வருமானம்",
-                                "Address": "முகவரி",
-                                "District": "மாவட்டம்",
-                                "Certificate Number": "சான்றிதழ் எண்",
-                                "Community": "சமூகம்",
-                                "Caste": "சாதி",
-                                "Deceased Person": "இறந்த நபர்",
-                                "Legal Heirs": "சட்ட வாரிசுகள்",
-                                "Relationship": "உறவு",
-                                "Owner Name": "உரிமையாளர் பெயர்",
-                                "Survey Number": "சர்வே எண்",
-                                "Patta Number": "பட்டா எண்",
-                                "Village": "கிராமம்",
-                                "Taluk": "வட்டம்",
-                                "Extent": "பரப்பளவு",
-                                "Order / Notice Number": "உத்தரவு / அறிவிப்பு எண்",
-                                "Department": "துறை",
-                                "Subject": "பொருள்",
-                                "Applicant Name": "விண்ணப்பதாரர் பெயர்",
-                                "Application Number": "விண்ணப்ப எண்",
-                                "Case Number": "வழக்கு எண்",
-                                "Court Name": "நீதிமன்றம்",
-                                "Judge": "நீதிபதி",
-                                "Order Date": "உத்தரவு தேதி",
-                                "Petitioner": "மனுதாரர்",
-                                "Respondent": "எதிர்மனுதாரர்",
-                                "Outcome": "முடிவு",
-                                "Important Points": "முக்கிய அம்சங்கள்",
-                                "Dates": "தேதிகள்"
-                            } %}
-                            {{ tamil_labels.get(key, key) }}
+
+                        <span class="en">
+                            {{ field.label_en }}
                         </span>
+
+                        <span class="ta">
+                            {{ field.label_ta }}
+                        </span>
+
                     </div>
-                    <div class="field-value {% if value == 'Not detected' %}not-detected{% endif %}">{{ value }}</div>
+
+
+                    <div
+                        class="field-value
+                        {% if field.value == 'Not detected' %}
+                        not-detected
+                        {% endif %}">
+
+                        {{ field.value }}
+
+                    </div>
+
+
                 </div>
+
+
                 {% endfor %}
+
+
+            {% elif result.fields %}
+
+
+                {% for key, value in result.fields.items() %}
+
+
+                <div class="field">
+
+
+                    <div class="field-label">
+
+
+                        <span class="en">
+                            {{ key }}
+                        </span>
+
+
+                        <span class="ta">
+
+
+                            {% set tamil_labels = {
+
+                                "Name": "பெயர்",
+
+                                "Father's Name":
+                                "தந்தையின் பெயர்",
+
+                                "Mother's Name":
+                                "தாயின் பெயர்",
+
+                                "Date of Birth":
+                                "பிறந்த தேதி",
+
+                                "Place of Birth":
+                                "பிறந்த இடம்",
+
+                                "Name of Deceased":
+                                "இறந்தவரின் பெயர்",
+
+                                "Date of Death":
+                                "இறந்த தேதி",
+
+                                "Place of Death":
+                                "இறந்த இடம்",
+
+                                "Father / Husband Name":
+                                "தந்தை / கணவர் பெயர்",
+
+                                "Father / Mother Name":
+                                "தந்தை / தாய் பெயர்",
+
+                                "Annual Income":
+                                "ஆண்டு வருமானம்",
+
+                                "Address":
+                                "முகவரி",
+
+                                "District":
+                                "மாவட்டம்",
+
+                                "Certificate Number":
+                                "சான்றிதழ் எண்",
+
+                                "Community":
+                                "சமூகம்",
+
+                                "Caste":
+                                "சாதி",
+
+                                "Deceased Person":
+                                "இறந்த நபர்",
+
+                                "Legal Heirs":
+                                "சட்ட வாரிசுகள்",
+
+                                "Relationship":
+                                "உறவு",
+
+                                "Owner Name":
+                                "உரிமையாளர் பெயர்",
+
+                                "Survey Number":
+                                "சர்வே எண்",
+
+                                "Patta Number":
+                                "பட்டா எண்",
+
+                                "Village":
+                                "கிராமம்",
+
+                                "Taluk":
+                                "வட்டம்",
+
+                                "Extent":
+                                "பரப்பளவு",
+
+                                "Order / Notice Number":
+                                "உத்தரவு / அறிவிப்பு எண்",
+
+                                "Department":
+                                "துறை",
+
+                                "Subject":
+                                "பொருள்",
+
+                                "Applicant Name":
+                                "விண்ணப்பதாரர் பெயர்",
+
+                                "Application Number":
+                                "விண்ணப்ப எண்",
+
+                                "Case Number":
+                                "வழக்கு எண்",
+
+                                "Court Name":
+                                "நீதிமன்றம்",
+
+                                "Judge":
+                                "நீதிபதி",
+
+                                "Order Date":
+                                "உத்தரவு தேதி",
+
+                                "Petitioner":
+                                "மனுதாரர்",
+
+                                "Respondent":
+                                "எதிர்மனுதாரர்",
+
+                                "Outcome":
+                                "முடிவு",
+
+                                "Important Points":
+                                "முக்கிய அம்சங்கள்",
+
+                                "Dates":
+                                "தேதிகள்"
+
+                            } %}
+
+
+                            {{ tamil_labels.get(key, key) }}
+
+
+                        </span>
+
+                    </div>
+
+
+
+                    <div
+                        class="field-value
+                        {% if value == 'Not detected' %}
+                        not-detected
+                        {% endif %}">
+
+                        {{ value }}
+
+                    </div>
+
+
+                </div>
+
+
+                {% endfor %}
+
+
             {% else %}
-                <div class="field"><div class="field-value not-detected">Not detected</div></div>
+
+
+                <div class="field">
+
+                    <div class="field-value not-detected">
+
+                        Not detected
+
+                    </div>
+
+                </div>
+
+
             {% endif %}
+
+
         </div>
+
     </section>
+
+
+
+    <!-- ========================================================
+         COURT ORDER
+    ========================================================= -->
 
     {% if result.court_order %}
+
+
     <section class="card">
-        <h2>⚖️ <span class="en">Court Order Explanation</span><span class="ta">நீதிமன்ற உத்தரவு விளக்கம்</span></h2>
+
+
+        <h2>
+
+            ⚖️
+
+            <span class="en">
+                Court Order Explanation
+            </span>
+
+            <span class="ta">
+                நீதிமன்ற உத்தரவு விளக்கம்
+            </span>
+
+        </h2>
+
+
 
         <div class="court-grid">
-            <div class="field"><div class="field-label"><span class="en">Case Number</span><span class="ta">வழக்கு எண்</span></div><div class="field-value">{{ result.court_order.case_number }}</div></div>
-            <div class="field"><div class="field-label"><span class="en">Court Name</span><span class="ta">நீதிமன்றம்</span></div><div class="field-value">{{ result.court_order.court_name }}</div></div>
-            <div class="field"><div class="field-label"><span class="en">Judge</span><span class="ta">நீதிபதி</span></div><div class="field-value">{{ result.court_order.judge }}</div></div>
-            <div class="field"><div class="field-label"><span class="en">Order Date</span><span class="ta">உத்தரவு தேதி</span></div><div class="field-value">{{ result.court_order.order_date }}</div></div>
-            <div class="field"><div class="field-label"><span class="en">Petitioner</span><span class="ta">மனுதாரர்</span></div><div class="field-value">{{ result.court_order.petitioner }}</div></div>
-            <div class="field"><div class="field-label"><span class="en">Respondent</span><span class="ta">எதிர்மனுதாரர்</span></div><div class="field-value">{{ result.court_order.respondent }}</div></div>
-            <div class="field"><div class="field-label"><span class="en">Outcome</span><span class="ta">முடிவு</span></div><div class="field-value" id="courtOutcome">{{ result.court_order.outcome }}</div></div>
+
+
+            <div class="field">
+
+                <div class="field-label">
+
+                    <span class="en">
+                        Case Number
+                    </span>
+
+                    <span class="ta">
+                        வழக்கு எண்
+                    </span>
+
+                </div>
+
+                <div class="field-value">
+                    {{ result.court_order.case_number }}
+                </div>
+
+            </div>
+
+
+
+            <div class="field">
+
+                <div class="field-label">
+
+                    <span class="en">
+                        Court Name
+                    </span>
+
+                    <span class="ta">
+                        நீதிமன்றம்
+                    </span>
+
+                </div>
+
+                <div class="field-value">
+                    {{ result.court_order.court_name }}
+                </div>
+
+            </div>
+
+
+
+            <div class="field">
+
+                <div class="field-label">
+
+                    <span class="en">
+                        Judge
+                    </span>
+
+                    <span class="ta">
+                        நீதிபதி
+                    </span>
+
+                </div>
+
+                <div class="field-value">
+                    {{ result.court_order.judge }}
+                </div>
+
+            </div>
+
+
+
+            <div class="field">
+
+                <div class="field-label">
+
+                    <span class="en">
+                        Order Date
+                    </span>
+
+                    <span class="ta">
+                        உத்தரவு தேதி
+                    </span>
+
+                </div>
+
+                <div class="field-value">
+                    {{ result.court_order.order_date }}
+                </div>
+
+            </div>
+
+
+
+            <div class="field">
+
+                <div class="field-label">
+
+                    <span class="en">
+                        Petitioner
+                    </span>
+
+                    <span class="ta">
+                        மனுதாரர்
+                    </span>
+
+                </div>
+
+                <div class="field-value">
+                    {{ result.court_order.petitioner }}
+                </div>
+
+            </div>
+
+
+
+            <div class="field">
+
+                <div class="field-label">
+
+                    <span class="en">
+                        Respondent
+                    </span>
+
+                    <span class="ta">
+                        எதிர்மனுதாரர்
+                    </span>
+
+                </div>
+
+                <div class="field-value">
+                    {{ result.court_order.respondent }}
+                </div>
+
+            </div>
+
+
+
+            <div class="field">
+
+                <div class="field-label">
+
+                    <span class="en">
+                        Outcome
+                    </span>
+
+                    <span class="ta">
+                        முடிவு
+                    </span>
+
+                </div>
+
+                <div
+                    class="field-value"
+                    id="courtOutcome">
+
+                    {{ result.court_order.outcome }}
+
+                </div>
+
+            </div>
+
+
         </div>
 
-        <h3 style="margin-top:18px;">📝 <span class="en">Summary</span><span class="ta">சுருக்கம்</span></h3>
+
+
+        <h3 style="margin-top:18px;">
+
+            📝
+
+            <span class="en">
+                Summary
+            </span>
+
+            <span class="ta">
+                சுருக்கம்
+            </span>
+
+        </h3>
+
+
+
         <div class="summary-box en-block">
-            {% for line in result.court_order.english_summary %}<p>{{ line }}</p>{% endfor %}
+
+            {% for line in result.court_order.english_summary %}
+
+            <p>
+                {{ line }}
+            </p>
+
+            {% endfor %}
+
         </div>
+
+
+
         <div class="summary-box ta-block">
-            {% for line in result.court_order.tamil_summary %}<p>{{ line }}</p>{% endfor %}
+
+            {% for line in result.court_order.tamil_summary %}
+
+            <p>
+                {{ line }}
+            </p>
+
+            {% endfor %}
+
         </div>
+
+
 
         {% if result.court_order.important_points %}
-        <h3 style="margin-top:18px;">📍 <span class="en">Important Points</span><span class="ta">முக்கிய அம்சங்கள்</span></h3>
+
+
+        <h3 style="margin-top:18px;">
+
+            📍
+
+            <span class="en">
+                Important Points
+            </span>
+
+            <span class="ta">
+                முக்கிய அம்சங்கள்
+            </span>
+
+        </h3>
+
+
+
         <div class="summary-box">
-            {% for point in result.court_order.important_points %}<p>{{ point }}</p>{% endfor %}
+
+            {% for point in result.court_order.important_points %}
+
+            <p>
+                {{ point }}
+            </p>
+
+            {% endfor %}
+
         </div>
+
+
         {% endif %}
 
+
+
         <div class="voice-row">
-            <button class="secondary" onclick="speakCourtOrder('en')">🔊 English Voice</button>
-            <button class="secondary" onclick="speakCourtOrder('ta')">🔊 தமிழ் குரல்</button>
-            <button class="secondary" onclick="stopVoice()">⏹ Stop</button>
+
+
+            <button
+                class="secondary"
+                onclick="speakCourtOrder('en')">
+
+                🔊 English Voice
+
+            </button>
+
+
+            <button
+                class="secondary"
+                onclick="speakCourtOrder('ta')">
+
+                🔊 தமிழ் குரல்
+
+            </button>
+
+
+            <button
+                class="secondary"
+                onclick="stopVoice()">
+
+                ⏹ Stop
+
+            </button>
+
+
         </div>
+
+
     </section>
+
+
     {% endif %}
+
+
+
+    <!-- ========================================================
+         OCR TEXT
+    ========================================================= -->
 
     <section class="card">
-        <h2>🔎 <span class="en">Extracted OCR Text</span><span class="ta">பிரித்தெடுக்கப்பட்ட OCR உரை</span></h2>
-        <div class="ocr" id="ocrText">{{ result.text }}</div>
-        <div class="voice-row">
-            <button class="secondary" onclick="speakOCR('en')">🔊 Read English</button>
-            <button class="secondary" onclick="speakOCR('ta')">🔊 தமிழில் வாசிக்க</button>
-            <button class="secondary" onclick="stopVoice()">⏹ Stop</button>
+
+
+        <h2>
+
+            🔎
+
+            <span class="en">
+                Extracted OCR Text
+            </span>
+
+            <span class="ta">
+                பிரித்தெடுக்கப்பட்ட OCR உரை
+            </span>
+
+        </h2>
+
+
+
+        <div
+            class="ocr"
+            id="ocrText">
+
+            {{ result.text }}
+
         </div>
+
+
+
+        <div class="voice-row">
+
+
+            <button
+                class="secondary"
+                onclick="speakOCR('en')">
+
+                🔊 Read English
+
+            </button>
+
+
+            <button
+                class="secondary"
+                onclick="speakOCR('ta')">
+
+                🔊 தமிழில் வாசிக்க
+
+            </button>
+
+
+            <button
+                class="secondary"
+                onclick="stopVoice()">
+
+                ⏹ Stop
+
+            </button>
+
+
+        </div>
+
+
     </section>
+
+
+
+    <!-- ========================================================
+         PROCESSED DOCUMENT
+    ========================================================= -->
 
     {% if result.processed_filename %}
+
+
     <section class="card processed-wrap">
-        <h2>🖼️ <span class="en">Processed Document</span><span class="ta">செயலாக்கப்பட்ட ஆவணம்</span></h2>
-        <img class="processed-img" src="{{ url_for('processed_file', filename=result.processed_filename) }}" alt="Processed document">
+
+
+        <h2>
+
+            🖼️
+
+            <span class="en">
+                Processed Document
+            </span>
+
+            <span class="ta">
+                செயலாக்கப்பட்ட ஆவணம்
+            </span>
+
+        </h2>
+
+
+
+        <img
+            class="processed-img"
+            src="{{ url_for(
+                'processed_file',
+                filename=result.processed_filename
+            ) }}"
+            alt="Processed document">
+
+
     </section>
+
+
     {% endif %}
+
+
+
+    <!-- ========================================================
+         WARNING
+    ========================================================= -->
 
     <div class="warning">
-        ⚠️ <strong><span class="en">Important:</span><span class="ta">முக்கியம்:</span></strong>
-        <span class="en">The information shown above is extracted using OCR and automated document analysis. OCR may contain errors. For legal or official purposes, always verify the information with the original document.</span>
-        <span class="ta">மேலே காட்டப்படும் தகவல்கள் OCR மற்றும் தானியங்கி ஆவண பகுப்பாய்வு மூலம் பெறப்பட்டவை. OCR-ல் பிழைகள் இருக்கலாம். சட்ட அல்லது அதிகாரப்பூர்வ பயன்பாட்டிற்கு அசல் ஆவணத்துடன் தகவலை சரிபார்க்கவும்.</span>
+
+        ⚠️
+
+        <strong>
+
+            <span class="en">
+                Important:
+            </span>
+
+            <span class="ta">
+                முக்கியம்:
+            </span>
+
+        </strong>
+
+
+        <span class="en">
+
+            The information shown above is extracted using OCR
+            and automated document analysis. OCR may contain
+            errors. For legal or official purposes, always
+            verify the information with the original document.
+
+        </span>
+
+
+        <span class="ta">
+
+            மேலே காட்டப்படும் தகவல்கள் OCR மற்றும் தானியங்கி
+            ஆவண பகுப்பாய்வு மூலம் பெறப்பட்டவை.
+            OCR-ல் பிழைகள் இருக்கலாம்.
+            சட்ட அல்லது அதிகாரப்பூர்வ பயன்பாட்டிற்கு
+            அசல் ஆவணத்துடன் தகவலை சரிபார்க்கவும்.
+
+        </span>
+
+
     </div>
+
+
     {% endif %}
 
+
+
+    <!-- ========================================================
+         FOOTER
+    ========================================================= -->
+
     <footer>
-        Government Document Readability & Understanding Assistant<br>
+
+        Government Document Readability &
+        Understanding Assistant
+
+        <br>
+
         OCR-based Tamil + English document analysis
+
     </footer>
+
+
 </main>
 
+
+
+<!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+
 <script>
-    let currentLanguage = localStorage.getItem("documentLanguage") || "en";
+
+
+    /* ============================================================
+       LANGUAGE
+    ============================================================ */
+
+    let currentLanguage =
+        localStorage.getItem("documentLanguage") || "en";
+
 
     function setLanguage(lang) {
+
         currentLanguage = lang;
-        localStorage.setItem("documentLanguage", lang);
-        document.body.classList.toggle("ta-mode", lang === "ta");
-        document.getElementById("englishBtn").classList.toggle("active", lang === "en");
-        document.getElementById("tamilBtn").classList.toggle("active", lang === "ta");
-        document.documentElement.lang = lang === "ta" ? "ta" : "en";
+
+        localStorage.setItem(
+            "documentLanguage",
+            lang
+        );
+
+
+        document.body.classList.toggle(
+            "ta-mode",
+            lang === "ta"
+        );
+
+
+        document
+            .getElementById("englishBtn")
+            .classList.toggle(
+                "active",
+                lang === "en"
+            );
+
+
+        document
+            .getElementById("tamilBtn")
+            .classList.toggle(
+                "active",
+                lang === "ta"
+            );
+
+
+        document.documentElement.lang =
+            lang === "ta"
+                ? "ta"
+                : "en";
     }
+
+
+
+    /* ============================================================
+       STOP VOICE
+    ============================================================ */
 
     function stopVoice() {
-        if ("speechSynthesis" in window) speechSynthesis.cancel();
+
+        if ("speechSynthesis" in window) {
+
+            speechSynthesis.cancel();
+
+        }
+
     }
+
+
+
+    /* ============================================================
+       SPEAK TEXT
+    ============================================================ */
 
     function speakText(text, lang) {
-        if (!text || !("speechSynthesis" in window)) return;
+
+        if (
+            !text ||
+            !("speechSynthesis" in window)
+        ) {
+
+            return;
+
+        }
+
+
         speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = lang === "ta" ? "ta-IN" : "en-IN";
+
+
+        const utterance =
+            new SpeechSynthesisUtterance(text);
+
+
+        utterance.lang =
+            lang === "ta"
+                ? "ta-IN"
+                : "en-IN";
+
+
         utterance.rate = 0.9;
+
         utterance.pitch = 1;
-        speechSynthesis.speak(utterance);
+
+
+        speechSynthesis.speak(
+            utterance
+        );
+
     }
+
+
+
+    /* ============================================================
+       SPEAK OCR
+    ============================================================ */
 
     function speakOCR(lang) {
-        const text = document.getElementById("ocrText")?.innerText || "";
-        speakText(text, lang);
+
+        const text =
+            document
+                .getElementById("ocrText")
+                ?.innerText || "";
+
+
+        speakText(
+            text,
+            lang
+        );
+
     }
+
+
+
+    /* ============================================================
+       SPEAK COURT ORDER
+    ============================================================ */
 
     function speakCourtOrder(lang) {
+
         {% if result and result.court_order %}
+
         let text = "";
+
+
         {% if result.court_order.english_summary %}
+
         if (lang === "en") {
-            text = {{ result.court_order.english_summary|join(" ")|tojson }};
+
+            text =
+                {{ result.court_order.english_summary
+                    | join(" ")
+                    | tojson }};
+
         }
+
         {% endif %}
+
+
+
         {% if result.court_order.tamil_summary %}
+
         if (lang === "ta") {
-            text = {{ result.court_order.tamil_summary|join(" ")|tojson }};
+
+            text =
+                {{ result.court_order.tamil_summary
+                    | join(" ")
+                    | tojson }};
+
         }
+
         {% endif %}
-        speakText(text, lang);
+
+
+        speakText(
+            text,
+            lang
+        );
+
         {% endif %}
+
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-        setLanguage(currentLanguage);
 
-        const fileInput = document.getElementById("documentFile");
-        const fileName = document.getElementById("fileName");
 
-        if (fileInput && fileName) {
-            fileInput.addEventListener("change", () => {
-                fileName.textContent = fileInput.files.length
-                    ? fileInput.files[0].name
-                    : "";
-            });
+    /* ============================================================
+       PAGE LOAD
+    ============================================================ */
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        () => {
+
+
+            /* Language */
+
+            setLanguage(
+                currentLanguage
+            );
+
+
+            /* File input */
+
+            const fileInput =
+                document.getElementById(
+                    "documentFile"
+                );
+
+
+            const fileName =
+                document.getElementById(
+                    "fileName"
+                );
+
+
+            if (
+                fileInput &&
+                fileName
+            ) {
+
+
+                fileInput.addEventListener(
+                    "change",
+                    () => {
+
+
+                        if (
+                            fileInput.files.length
+                        ) {
+
+                            fileName.textContent =
+                                "Selected file: " +
+                                fileInput
+                                    .files[0]
+                                    .name;
+
+                        }
+                        else {
+
+                            fileName.textContent =
+                                "";
+
+                        }
+
+                    }
+                );
+
+            }
+
         }
-    });
+    );
+
 </script>
 
+
 </body>
+
 </html>
