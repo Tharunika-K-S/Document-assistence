@@ -9,13 +9,19 @@ import pytesseract
 
 from PIL import Image
 from scheme_recommendation import scheme_bp
-
+from auth_system import auth_bp, init_auth_db
 # ============================================================
 # FLASK CONFIGURATION
 # ============================================================
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    "change-this-local-secret-key"
+)
 app.register_blueprint(scheme_bp)
+app.register_blueprint(auth_bp)
+init_auth_db()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -275,8 +281,6 @@ CLASSIFICATION_KEYWORDS = {
         "கையொப்பம்"
     ]
 }
-
-
 # ============================================================
 # ALLOWED FILE
 # ============================================================

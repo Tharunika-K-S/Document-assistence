@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register | Government Document Assistant</title>
+<style>
+:root {
+    --primary: #2860df;
+    --dark: #101d45;
+    --text: #172033;
+    --muted: #667085;
+    --border: #e5ebf5;
+    --bg: #f5f8ff;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Segoe UI", "Noto Sans Tamil", Arial, sans-serif;
+    background: linear-gradient(135deg, #eef4ff, #f8fbff);
+    color: var(--text);
+}
+.topbar {
+    background: linear-gradient(90deg, #101d45, #21469d);
+    color: white;
+    padding: 16px 22px;
+}
+.topbar-inner {
+    max-width: 1050px;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+.brand { font-size: 19px; font-weight: 800; }
+.brand small { display:block; font-size:11px; opacity:.8; margin-top:3px; }
+.back {
+    color: white;
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,.35);
+    padding: 8px 13px;
+    border-radius: 9px;
+    font-size: 13px;
+}
+.page {
+    width: min(460px, calc(100% - 32px));
+    margin: 55px auto;
+}
+.card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 12px 35px rgba(33,60,110,.10);
+}
+.logo {
+    width: 58px;
+    height: 58px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius: 16px;
+    background: #edf3ff;
+    font-size: 28px;
+    margin-bottom: 16px;
+}
+h1 { margin: 0 0 8px; color: #173a91; font-size: 25px; }
+.sub { color: var(--muted); line-height: 1.6; font-size: 14px; margin-bottom: 24px; }
+label {
+    display:block;
+    font-weight: 700;
+    font-size: 13px;
+    margin: 15px 0 7px;
+}
+input {
+    width: 100%;
+    padding: 12px 13px;
+    border: 1px solid #ccd5e5;
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+}
+input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(40,96,223,.10);
+}
+.primary {
+    width:100%;
+    margin-top: 21px;
+    border:0;
+    background: var(--primary);
+    color:white;
+    padding:13px;
+    border-radius:10px;
+    font-weight:800;
+    cursor:pointer;
+    font-size:14px;
+}
+.primary:hover { background:#1e4fc0; }
+.switch {
+    text-align:center;
+    margin-top:20px;
+    color:var(--muted);
+    font-size:13px;
+}
+.switch a { color:var(--primary); font-weight:800; text-decoration:none; }
+.flash {
+    padding:11px 13px;
+    border-radius:10px;
+    margin-bottom:15px;
+    font-size:13px;
+}
+.flash.error { background:#fff0f0; color:#a61b1b; border:1px solid #ffcaca; }
+.flash.info { background:#eef5ff; color:#1946a2; border:1px solid #cfe0ff; }
+.account-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:20px;
+}
+.account-item {
+    background:#f8fafc;
+    border:1px solid #e7ebf1;
+    border-radius:12px;
+    padding:14px;
+}
+.account-label { font-size:11px; color:var(--muted); }
+.account-value { margin-top:5px; font-weight:700; word-break:break-word; }
+.actions { display:flex; gap:10px; margin-top:22px; }
+.actions a {
+    flex:1;
+    text-align:center;
+    text-decoration:none;
+    padding:11px;
+    border-radius:9px;
+    font-weight:700;
+    font-size:13px;
+}
+.home { background:#edf3ff; color:#1946a2; }
+.logout { background:#fff0f0; color:#a61b1b; }
+@media(max-width:600px) {
+    .topbar-inner { align-items:flex-start; flex-direction:column; }
+    .card { padding:23px; }
+    .account-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">📄 Government Document Assistant
+            <small>Tamil + English Document Assistant</small>
+        </div>
+        <a class="back" href="{{ url_for('index') }}">← Home</a>
+    </div>
+</header>
+
+<main class="page">
+    <section class="card">
+        <div class="logo">👤</div>
+        <h1>Create Account</h1>
+        <p class="sub">Create your account to keep your personalized features connected to you.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <form method="POST">
+            <label for="name">Full Name</label>
+            <input id="name" type="text" name="name" placeholder="Your name" required autocomplete="name">
+
+            <label for="email">Email Address</label>
+            <input id="email" type="email" name="email" placeholder="you@example.com" required autocomplete="email">
+
+            <label for="password">Password</label>
+            <input id="password" type="password" name="password" placeholder="Minimum 6 characters" minlength="6" required autocomplete="new-password">
+
+            <label for="confirm_password">Confirm Password</label>
+            <input id="confirm_password" type="password" name="confirm_password" placeholder="Re-enter password" minlength="6" required autocomplete="new-password">
+
+            <button class="primary" type="submit">📝 Create Account</button>
+        </form>
+
+        <div class="switch">
+            Already have an account?
+            <a href="{{ url_for('auth.login') }}">Login</a>
+        </div>
+    </section>
+</main>
+</body>
+</html>

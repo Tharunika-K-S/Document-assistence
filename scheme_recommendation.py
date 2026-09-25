@@ -110,6 +110,18 @@ CATEGORY_MAP = {
     },
 }
 
+PROFILE_QUESTIONS = [
+    {"id": "age", "type": "number", "en": "Age", "ta": "வயது", "placeholder": "Enter your age"},
+    {"id": "gender", "type": "select", "en": "Gender", "ta": "பாலினம்",
+     "options": [("female", "Female", "பெண்"), ("male", "Male", "ஆண்"), ("other", "Other", "மற்றவை")]},
+    {"id": "income", "type": "number", "en": "Annual family income (₹)", "ta": "ஆண்டு குடும்ப வருமானம் (₹)", "placeholder": "Example: 250000"},
+    {"id": "community", "type": "select", "en": "Community", "ta": "சமூகம்",
+     "options": [("sc", "SC", "SC"), ("st", "ST", "ST"), ("obc", "OBC / BC / MBC", "OBC / BC / MBC"), ("general", "General", "பொது"), ("other", "Other / Prefer not to say", "மற்றவை / தெரிவிக்க விரும்பவில்லை")]},
+    {"id": "occupation", "type": "select", "en": "Occupation", "ta": "தொழில்",
+     "options": [("student", "Student", "மாணவர்"), ("farmer", "Farmer", "விவசாயி"), ("agri_labour", "Agricultural Labourer", "விவசாயத் தொழிலாளர்"), ("employee", "Employee", "ஊழியர்"), ("jobseeker", "Job Seeker", "வேலை தேடுபவர்"), ("business", "Business / Self-employed", "தொழில் / சுயதொழில்"), ("homemaker", "Homemaker", "இல்லத்தரசி"), ("senior", "Senior Citizen", "மூத்த குடிமகன்"), ("other", "Other", "மற்றவை")]},
+    {"id": "district", "type": "text", "en": "District", "ta": "மாவட்டம்", "placeholder": "Example: Chennai"},
+]
+
 QUESTIONS = {
     "agriculture": [
         {"id": "farmer_type", "en": "What best describes you?", "ta": "உங்களை எந்த வகை விவசாயி / பயனாளி என்று கூறலாம்?",
@@ -340,7 +352,7 @@ def public_scheme(row, score):
 
 @scheme_bp.route("/", methods=["GET"])
 def scheme_home():
-    return render_template("schemes.html", categories=CATEGORY_MAP)
+    return render_template("schemes.html", categories=CATEGORY_MAP, profile_questions=PROFILE_QUESTIONS)
 
 
 @scheme_bp.route("/api/questions/<category>", methods=["GET"])
