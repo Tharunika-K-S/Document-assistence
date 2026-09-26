@@ -1,15 +1,16 @@
 from flask import Flask, render_template, request, send_from_directory
 from werkzeug.utils import secure_filename
-
+from flask_login import login_user, logout_user, login_required, current_user
 import os
 import re
 import cv2
 import numpy as np
 import pytesseract
-
+import fitz
 from PIL import Image
 from scheme_recommendation import scheme_bp
-from auth_system import auth_bp, init_auth_db
+from auth_system import auth_bp, init_auth_db, login_required
+from readability_analyzer import analyze_readability
 # ============================================================
 # FLASK CONFIGURATION
 # ============================================================
@@ -39,9 +40,9 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 ALLOWED_EXTENSIONS = {
     "png",
     "jpg",
-    "jpeg"
+    "jpeg",
+    "pdf"
 }
-
 
 # ============================================================
 # TESSERACT CONFIGURATION
@@ -307,6 +308,34 @@ def read_image(path):
         raise ValueError("Unable to read uploaded image.")
 
     return image
+
+# ============================================================
+# PDF TEXT EXTRACTION
+# ============================================================
+
+def extract_pdf_text(pdf_path):
+
+    text_parts = []
+
+    document = fitz.open(pdf_path)
+
+    try:
+
+        for page in document:
+
+            page_text = page.get_text()
+
+            if page_text and page_text.strip():
+
+                text_parts.append(
+                    page_text.strip()
+                )
+
+    finally:
+
+        document.close()
+
+    return "\n\n".join(text_parts)
 
 
 # ============================================================
@@ -2463,6 +2492,13 @@ def process_document(
     ) = classify_document(
         best_text
     )
+    # --------------------------------------------------------
+    # READABILITY ANALYSIS
+    # --------------------------------------------------------
+
+    readability = analyze_readability(
+        best_text
+    )
 
 
     # --------------------------------------------------------
@@ -2624,6 +2660,9 @@ def process_document(
         "fields_i18n":
             build_fields_i18n(fields),
 
+        "readability":
+            readability,
+
         "court_order":
             court_order
     }
@@ -2640,6 +2679,7 @@ def process_document(
     "/",
     methods=["GET", "POST"]
 )
+@login_required
 def index():
 
     error = None
@@ -2679,12 +2719,12 @@ def index():
 
 
         if not allowed_file(
-            file.filename
-        ):
+        file.filename
+    ):
 
             error = (
                 "Unsupported file type. "
-                "Please upload JPG, JPEG or PNG."
+                "Please upload JPG, JPEG, PNG or PDF."
             )
 
             return render_template(
@@ -2692,7 +2732,6 @@ def index():
                 error=error,
                 result=None
             )
-
 
         filename = secure_filename(
             file.filename
@@ -2721,10 +2760,94 @@ def index():
 
         try:
 
-            result = process_document(
-                upload_path,
-                unique_filename
+            file_extension = (
+                filename.rsplit(".", 1)[1].lower()
             )
+
+            # --------------------------------------------------------
+            # PDF
+            # --------------------------------------------------------
+
+            if file_extension == "pdf":
+
+                pdf_text = extract_pdf_text(
+                    upload_path
+                )
+
+                if not pdf_text.strip():
+
+                    error = (
+                        "No text could be extracted from "
+                        "the PDF. Please upload a text-based PDF."
+                    )
+
+                else:
+
+                    # Use the existing readability analyzer
+                    readability = analyze_readability(
+                        pdf_text
+                    )
+
+                    result = {
+
+                        "text":
+                            pdf_text,
+
+                        "confidence":
+                            100.0,
+
+                        "quality":
+                            "Good",
+
+                        "best_version":
+                            "PDF Text",
+
+                        "best_psm":
+                            None,
+
+                        "document_detected":
+                            True,
+
+                        "processed_filename":
+                            None,
+
+                        "document_type":
+                            "General Government Document",
+
+                        "document_type_ta":
+                            "பொது அரசு ஆவணம்",
+
+                        "classification_confidence":
+                            0,
+
+                        "classification_keywords":
+                            [],
+
+                        "fields":
+                            {},
+
+                        "fields_i18n":
+                            [],
+
+                        "readability":
+                            readability,
+
+                        "court_order":
+                            None
+
+                    }
+
+    # --------------------------------------------------------
+    # JPG / JPEG / PNG
+    # --------------------------------------------------------
+
+            else:
+
+                result = process_document(
+                    upload_path,
+                    unique_filename
+                )
+
 
         except Exception as exc:
 
@@ -2735,9 +2858,8 @@ def index():
 
             error = (
                 "Document processing failed. "
-                "Please check the image and "
-                "Tesseract installation."
-            )
+                "Please check the uploaded file."
+            )        
 
 
     return render_template(

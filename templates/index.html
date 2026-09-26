@@ -879,7 +879,7 @@
                     id="documentFile"
                     type="file"
                     name="file"
-                    accept=".png,.jpg,.jpeg"
+                    accept=".png,.jpg,.jpeg,.pdf"
                     required>
 
 
@@ -1064,6 +1064,210 @@
         </div>
 
     </section>
+
+    <!-- ================= READABILITY ANALYSIS ================= -->
+
+{% if result and result.readability %}
+
+<section class="card">
+
+    <div class="result-title">
+
+        <h2>
+            📖
+
+            <span class="en">
+                Readability Analysis
+            </span>
+
+            <span class="ta">
+                வாசிப்பு எளிமை பகுப்பாய்வு
+            </span>
+        </h2>
+
+    </div>
+
+
+    <div class="stats">
+
+        <div class="stat">
+
+            <div class="stat-label">
+
+                <span class="en">
+                    Readability Score
+                </span>
+
+                <span class="ta">
+                    வாசிப்பு மதிப்பெண்
+                </span>
+
+            </div>
+
+            <div class="stat-value">
+                {{ result.readability.score }}
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-label">
+
+                <span class="en">
+                    Difficulty Level
+                </span>
+
+                <span class="ta">
+                    கடினத்தன்மை நிலை
+                </span>
+
+            </div>
+
+            <div class="stat-value">
+                {{ result.readability.level }}
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-label">
+
+                <span class="en">
+                    Word Count
+                </span>
+
+                <span class="ta">
+                    சொற்களின் எண்ணிக்கை
+                </span>
+
+            </div>
+
+            <div class="stat-value">
+                {{ result.readability.word_count }}
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-label">
+
+                <span class="en">
+                    Sentence Count
+                </span>
+
+                <span class="ta">
+                    வாக்கியங்களின் எண்ணிக்கை
+                </span>
+
+            </div>
+
+            <div class="stat-value">
+                {{ result.readability.sentence_count }}
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-label">
+
+                <span class="en">
+                    Average Sentence Length
+                </span>
+
+                <span class="ta">
+                    சராசரி வாக்கிய நீளம்
+                </span>
+
+            </div>
+
+            <div class="stat-value">
+                {{ result.readability.average_sentence_length }}
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-label">
+
+                <span class="en">
+                    Long Words
+                </span>
+
+                <span class="ta">
+                    நீண்ட சொற்கள்
+                </span>
+
+            </div>
+
+            <div class="stat-value">
+                {{ result.readability.long_word_count }}
+            </div>
+
+        </div>
+
+    </div>
+
+
+    {% if result.readability.difficult_words %}
+
+    <div class="summary-box">
+
+        <h3>
+            <span class="en">
+                Difficult Words
+            </span>
+
+            <span class="ta">
+                கடினமான சொற்கள்
+            </span>
+        </h3>
+
+        <p>
+            {{ result.readability.difficult_words | join(', ') }}
+        </p>
+
+    </div>
+
+    {% endif %}
+
+
+    {% if result.readability.simple_explanation %}
+
+    <div class="summary-box">
+
+        <h3>
+            <span class="en">
+                Simple Explanation
+            </span>
+
+            <span class="ta">
+                எளிய விளக்கம்
+            </span>
+        </h3>
+
+        <p>
+            {{ result.readability.simple_explanation }}
+        </p>
+
+    </div>
+
+    {% endif %}
+
+</section>
+
+{% endif %}
+
+<!-- ======================================================== -->
 
 
 

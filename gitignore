@@ -1,6 +1,8 @@
-venv
+__pycache__/
+*.pyc
+*.pyo
 processed/
 uploads/
-__pycache__/
+*.db
 .env
-.db
+
