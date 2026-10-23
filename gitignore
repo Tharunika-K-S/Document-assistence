@@ -5,4 +5,12 @@ processed/
 uploads/
 *.db
 .env
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.env
+users.db
+uploads/*
+processed/*
 

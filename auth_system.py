@@ -1,9 +1,10 @@
+import json
+import os
+import sqlite3
+from datetime import datetime
+from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
-import sqlite3
-import os
-from datetime import datetime
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -30,13 +31,27 @@ def init_auth_db():
         )
     """)
 
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS document_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            document_type TEXT,
+            document_type_ta TEXT,
+            confidence REAL DEFAULT 0,
+            processed_filename TEXT,
+            result_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
 def current_user():
     user_id = session.get("user_id")
-
     if not user_id:
         return None
 
@@ -46,7 +61,6 @@ def current_user():
         (user_id,)
     ).fetchone()
     conn.close()
-
     return user
 
 
@@ -56,9 +70,7 @@ def login_required(view):
         if not session.get("user_id"):
             flash("Please login to continue.", "info")
             return redirect(url_for("auth.login", next=request.path))
-
         return view(*args, **kwargs)
-
     return wrapped
 
 
@@ -67,17 +79,110 @@ def inject_current_user():
     return {"logged_in_user": current_user()}
 
 
+# ============================================================
+# DOCUMENT HISTORY HELPERS
+# ============================================================
+
+def save_document_history(user_id, filename, document_type, document_type_ta, confidence, processed_filename, result_dict):
+    """Save processed document and summary to document_history."""
+    if not user_id:
+        return None
+    try:
+        conn = get_db()
+        result_json = json.dumps(result_dict, ensure_ascii=False)
+        created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        cursor = conn.execute("""
+            INSERT INTO document_history (
+                user_id, filename, document_type, document_type_ta,
+                confidence, processed_filename, result_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            filename,
+            document_type or "General Government Document",
+            document_type_ta or "பொது அரசு ஆவணம்",
+            float(confidence or 0.0),
+            processed_filename or "",
+            result_json,
+            created_at
+        ))
+        conn.commit()
+        history_id = cursor.lastrowid
+        conn.close()
+        return history_id
+    except Exception as e:
+        print("Error saving document history:", e)
+        return None
+
+
+def get_user_history(user_id):
+    """Retrieve all document history entries for a specific user."""
+    if not user_id:
+        return []
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT id, filename, document_type, document_type_ta,
+               confidence, processed_filename, created_at
+        FROM document_history
+        WHERE user_id = ?
+        ORDER BY id DESC
+    """, (user_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_history_entry(history_id, user_id):
+    """Retrieve a single document history entry ensuring user isolation."""
+    if not user_id or not history_id:
+        return None
+    conn = get_db()
+    row = conn.execute("""
+        SELECT * FROM document_history
+        WHERE id = ? AND user_id = ?
+    """, (history_id, user_id)).fetchone()
+    conn.close()
+    if not row:
+        return None
+
+    entry = dict(row)
+    try:
+        entry["result"] = json.loads(entry["result_json"])
+    except Exception:
+        entry["result"] = {}
+    return entry
+
+
+def delete_history_entry(history_id, user_id):
+    """Safely delete a document history record owned by user."""
+    if not user_id or not history_id:
+        return False
+    conn = get_db()
+    cursor = conn.execute("""
+        DELETE FROM document_history
+        WHERE id = ? AND user_id = ?
+    """, (history_id, user_id))
+    conn.commit()
+    deleted = cursor.rowcount > 0
+    conn.close()
+    return deleted
+
+
+# ============================================================
+# AUTHENTICATION ROUTES
+# ============================================================
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if session.get("user_id"):
-        return redirect(url_for("auth.account"))
+        return redirect(url_for("index"))
 
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
 
         if not email or not password:
-            flash("Please enter email and password.", "error")
+            flash("Please enter both email and password.", "error")
             return render_template("login.html")
 
         conn = get_db()
@@ -97,9 +202,10 @@ def login():
             if not next_url.startswith("/"):
                 next_url = url_for("index")
 
+            flash(f"Welcome back, {user['name']}!", "info")
             return redirect(next_url)
 
-        flash("Invalid email or password.", "error")
+        flash("Invalid email or password. Please check your credentials.", "error")
 
     return render_template("login.html")
 
@@ -120,7 +226,7 @@ def register():
             return render_template("register.html")
 
         if len(name) < 2:
-            flash("Please enter a valid name.", "error")
+            flash("Please enter a valid name (at least 2 letters).", "error")
             return render_template("register.html")
 
         if "@" not in email or "." not in email:
@@ -136,7 +242,6 @@ def register():
             return render_template("register.html")
 
         conn = get_db()
-
         existing = conn.execute(
             "SELECT id FROM users WHERE email = ?",
             (email,)
@@ -144,25 +249,22 @@ def register():
 
         if existing:
             conn.close()
-            flash("An account with this email already exists.", "error")
+            flash("An account with this email already exists. Please login instead.", "error")
             return render_template("register.html")
 
         password_hash = generate_password_hash(password)
-
         cursor = conn.execute(
             """
-            INSERT INTO users
-                (name, email, password_hash, created_at)
+            INSERT INTO users (name, email, password_hash, created_at)
             VALUES (?, ?, ?, ?)
             """,
             (
                 name,
                 email,
                 password_hash,
-                datetime.now().isoformat(timespec="seconds")
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
         )
-
         conn.commit()
         user_id = cursor.lastrowid
         conn.close()
@@ -172,23 +274,25 @@ def register():
         session["user_name"] = name
         session["user_email"] = email
 
-        return redirect(url_for("auth.account"))
+        flash("Account created successfully! Welcome to GovEase AI.", "info")
+        return redirect(url_for("index"))
 
     return render_template("register.html")
 
 
 @auth_bp.route("/account")
+@login_required
 def account():
     user = current_user()
-
     if not user:
         return redirect(url_for("auth.login"))
 
-    return render_template("account.html", user=user)
+    history_items = get_user_history(user["id"])
+    return render_template("account.html", user=user, history_count=len(history_items))
 
 
 @auth_bp.route("/logout")
 def logout():
     session.clear()
-    flash("You have been logged out.", "info")
+    flash("You have been securely logged out.", "info")
     return redirect(url_for("index"))

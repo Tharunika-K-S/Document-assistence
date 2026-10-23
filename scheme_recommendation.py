@@ -1,4 +1,3 @@
-
 import csv
 import os
 import re
@@ -8,13 +7,14 @@ scheme_bp = Blueprint("scheme_recommendation", __name__, url_prefix="/schemes")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# The uploaded file is CSV data even though its extension is .xls.
 SCHEME_FILE_CANDIDATES = [
     "schemes.csv.xls",
     "schemes.csv",
     "schemes.csv(1).xls",
     "schemes.csv(1).csv",
 ]
+
+_SCHEMES_CACHE = None
 
 
 def find_scheme_file():
@@ -23,7 +23,6 @@ def find_scheme_file():
         if os.path.exists(path):
             return path
 
-    # Also accept a file whose name starts with schemes and ends in .xls/.csv.
     for filename in os.listdir(BASE_DIR):
         low = filename.lower()
         if low.startswith("schemes") and low.endswith((".csv", ".xls", ".xlsx")):
@@ -33,17 +32,26 @@ def find_scheme_file():
 
 
 def load_schemes():
+    """Load scheme database with in-memory caching to avoid disk latency."""
+    global _SCHEMES_CACHE
+    if _SCHEMES_CACHE is not None:
+        return _SCHEMES_CACHE
+
     path = find_scheme_file()
     if not path:
         return []
 
-    # Current supplied dataset is comma-separated CSV with an .xls extension.
-    with open(path, "r", encoding="utf-8-sig", newline="") as f:
-        reader = csv.DictReader(f)
-        rows = []
-        for row in reader:
-            rows.append({(k or "").strip(): (v or "").strip() for k, v in row.items()})
-        return rows
+    try:
+        with open(path, "r", encoding="utf-8-sig", newline="") as f:
+            reader = csv.DictReader(f)
+            rows = []
+            for row in reader:
+                rows.append({(k or "").strip(): (v or "").strip() for k, v in row.items()})
+            _SCHEMES_CACHE = rows
+            return _SCHEMES_CACHE
+    except Exception as e:
+        print("Error loading schemes file:", e)
+        return []
 
 
 def split_values(value):
@@ -61,65 +69,65 @@ CATEGORY_MAP = {
     "education": {
         "en": "Education & Learning",
         "ta": "கல்வி மற்றும் கற்றல்",
-        "keywords": ["education", "student", "school", "college", "scholarship", "learning"]
+        "keywords": ["education", "student", "school", "college", "scholarship", "learning", "graduate", "study"]
     },
     "women_child": {
-        "en": "Women and Child",
-        "ta": "பெண்கள் மற்றும் குழந்தைகள்",
-        "keywords": ["women", "woman", "girl", "child", "mother", "maternity", "pregnant"]
+        "en": "Women and Child / Family Welfare",
+        "ta": "பெண்கள், குழந்தைகள் மற்றும் குடும்ப நலம்",
+        "keywords": ["women", "woman", "girl", "child", "mother", "maternity", "pregnant", "family"]
     },
     "employment": {
         "en": "Skills & Employment",
         "ta": "திறன் மற்றும் வேலைவாய்ப்பு",
-        "keywords": ["employment", "job", "skill", "worker", "training", "livelihood"]
+        "keywords": ["employment", "job", "skill", "worker", "training", "livelihood", "career"]
     },
     "business": {
         "en": "Business & Entrepreneurship",
         "ta": "தொழில் மற்றும் தொழில்முனைவு",
-        "keywords": ["business", "entrepreneur", "startup", "enterprise", "msme", "self employment"]
+        "keywords": ["business", "entrepreneur", "startup", "enterprise", "msme", "self employment", "trade"]
     },
     "finance": {
         "en": "Banking, Financial Services and Insurance",
         "ta": "வங்கி, நிதிச் சேவைகள் மற்றும் காப்பீடு",
-        "keywords": ["financial", "finance", "loan", "insurance", "bank", "credit", "pension"]
+        "keywords": ["financial", "finance", "loan", "insurance", "bank", "credit", "pension", "assistance"]
     },
     "housing": {
         "en": "Housing & Shelter",
         "ta": "வீடு மற்றும் குடியிருப்பு",
-        "keywords": ["housing", "house", "home", "shelter", "construction"]
+        "keywords": ["housing", "house", "home", "shelter", "construction", "pradhan mantri awas"]
     },
     "health": {
         "en": "Health & Wellness",
         "ta": "சுகாதாரம் மற்றும் நலன்",
-        "keywords": ["health", "medical", "hospital", "disease", "healthcare", "medicine"]
+        "keywords": ["health", "medical", "hospital", "disease", "healthcare", "medicine", "ayushman"]
     },
     "senior": {
-        "en": "Social welfare & Empowerment",
-        "ta": "சமூக நலன் மற்றும் அதிகாரமளித்தல்",
-        "keywords": ["senior", "elderly", "old age", "pension", "social welfare"]
+        "en": "Senior Citizens Welfare",
+        "ta": "மூத்த குடிமக்கள் நலம்",
+        "keywords": ["senior", "elderly", "old age", "pension", "social welfare", "aged"]
     },
     "disability": {
-        "en": "Social welfare & Empowerment",
-        "ta": "சமூக நலன் மற்றும் அதிகாரமளித்தல்",
-        "keywords": ["disability", "disabled", "divyang", "differently abled"]
+        "en": "Differently Abled / Disability Support",
+        "ta": "மாற்றுத்திறனாளிகள் நலம் மற்றும் ஆதரவு",
+        "keywords": ["disability", "disabled", "divyang", "differently abled", "assistive"]
     },
     "other": {
-        "en": "All categories",
-        "ta": "அனைத்து பிரிவுகளும்",
-        "keywords": []
+        "en": "All Government Schemes",
+        "ta": "அனைத்து அரசு நலத்திட்டங்கள்",
+        "keywords": ["citizen", "welfare", "scheme", "government", "benefit"]
     },
 }
 
 PROFILE_QUESTIONS = [
-    {"id": "age", "type": "number", "en": "Age", "ta": "வயது", "placeholder": "Enter your age"},
+    {"id": "age", "type": "number", "en": "Age", "ta": "வயது", "placeholder": "Example: 24"},
     {"id": "gender", "type": "select", "en": "Gender", "ta": "பாலினம்",
      "options": [("female", "Female", "பெண்"), ("male", "Male", "ஆண்"), ("other", "Other", "மற்றவை")]},
-    {"id": "income", "type": "number", "en": "Annual family income (₹)", "ta": "ஆண்டு குடும்ப வருமானம் (₹)", "placeholder": "Example: 250000"},
+    {"id": "income", "type": "number", "en": "Annual family income (₹)", "ta": "ஆண்டு குடும்ப வருமானம் (₹)", "placeholder": "Example: 150000"},
     {"id": "community", "type": "select", "en": "Community", "ta": "சமூகம்",
      "options": [("sc", "SC", "SC"), ("st", "ST", "ST"), ("obc", "OBC / BC / MBC", "OBC / BC / MBC"), ("general", "General", "பொது"), ("other", "Other / Prefer not to say", "மற்றவை / தெரிவிக்க விரும்பவில்லை")]},
     {"id": "occupation", "type": "select", "en": "Occupation", "ta": "தொழில்",
      "options": [("student", "Student", "மாணவர்"), ("farmer", "Farmer", "விவசாயி"), ("agri_labour", "Agricultural Labourer", "விவசாயத் தொழிலாளர்"), ("employee", "Employee", "ஊழியர்"), ("jobseeker", "Job Seeker", "வேலை தேடுபவர்"), ("business", "Business / Self-employed", "தொழில் / சுயதொழில்"), ("homemaker", "Homemaker", "இல்லத்தரசி"), ("senior", "Senior Citizen", "மூத்த குடிமகன்"), ("other", "Other", "மற்றவை")]},
-    {"id": "district", "type": "text", "en": "District", "ta": "மாவட்டம்", "placeholder": "Example: Chennai"},
+    {"id": "district", "type": "text", "en": "District", "ta": "மாவட்டம்", "placeholder": "Example: Coimbatore / Chennai"},
 ]
 
 QUESTIONS = {
@@ -148,17 +156,12 @@ QUESTIONS = {
         {"id": "institution", "en": "Type of institution?", "ta": "கல்வி நிறுவனத்தின் வகை?",
          "options": [("government", "Government", "அரசு"), ("aided", "Government-aided", "அரசு உதவி பெறும்"),
                      ("private", "Private", "தனியார்"), ("other", "Other", "மற்றவை")]},
-        {"id": "income", "en": "Approximate annual family income?", "ta": "குடும்பத்தின் தோராயமான ஆண்டு வருமானம்?",
-         "options": [("below_1l", "Below ₹1 lakh", "₹1 லட்சத்திற்குக் கீழ்"),
-                     ("1_2_5l", "₹1–2.5 lakh", "₹1–2.5 லட்சம்"),
-                     ("2_5_5l", "₹2.5–5 lakh", "₹2.5–5 லட்சம்"),
-                     ("above_5l", "Above ₹5 lakh", "₹5 லட்சத்திற்கு மேல்"),
-                     ("unknown", "Not sure", "தெரியவில்லை")]},
     ],
     "women_child": [
         {"id": "profile", "en": "Which describes you best?", "ta": "உங்களை எந்த வகையில் குறிப்பிடலாம்?",
          "options": [("woman", "Woman", "பெண்"), ("girl", "Girl / Young woman", "சிறுமி / இளம் பெண்"),
-                     ("mother", "Mother", "தாய்"), ("child", "Child", "குழந்தை"), ("other", "Other", "மற்றவை")]},
+                     ("mother", "Mother", "தாய்"), ("pregnant", "Pregnant / Lactating", "கர்ப்பிணி / பாலூட்டும் தாய்"),
+                     ("child", "Child", "குழந்தை"), ("other", "Other", "மற்றவை")]},
     ],
     "employment": [
         {"id": "employment_status", "en": "What is your current situation?", "ta": "உங்கள் தற்போதைய நிலை என்ன?",
@@ -176,7 +179,7 @@ QUESTIONS = {
         {"id": "need", "en": "What type of financial support are you looking for?", "ta": "எந்த வகையான நிதி உதவி தேவை?",
          "options": [("loan", "Loan / Credit", "கடன்"), ("insurance", "Insurance", "காப்பீடு"),
                      ("pension", "Pension / Social security", "ஓய்வூதியம் / சமூக பாதுகாப்பு"),
-                     ("assistance", "Financial assistance", "நிதி உதவி"), ("other", "Other", "மற்றவை")]},
+                     ("assistance", "Financial assistance / Grant", "நிதி உதவி / மானியம்"), ("other", "Other", "மற்றவை")]},
     ],
     "housing": [
         {"id": "housing_need", "en": "What housing support do you need?", "ta": "எந்த வீட்டு உதவி தேவை?",
@@ -185,7 +188,7 @@ QUESTIONS = {
     ],
     "health": [
         {"id": "health_need", "en": "What kind of health support are you looking for?", "ta": "எந்த வகையான சுகாதார உதவி தேவை?",
-         "options": [("treatment", "Treatment", "சிகிச்சை"), ("insurance", "Health insurance", "மருத்துவ காப்பீடு"),
+         "options": [("treatment", "Treatment / Hospital care", "மருத்துவ சிகிச்சை"), ("insurance", "Health insurance", "மருத்துவ காப்பீடு"),
                      ("maternal", "Maternal / Child health", "தாய் / குழந்தை நலம்"), ("emergency", "Emergency support", "அவசர உதவி"),
                      ("other", "Other", "மற்றவை")]},
     ],
@@ -195,45 +198,27 @@ QUESTIONS = {
     ],
     "disability": [
         {"id": "support", "en": "What support are you looking for?", "ta": "எந்த உதவி தேவை?",
-         "options": [("education", "Education", "கல்வி"), ("employment", "Employment", "வேலைவாய்ப்பு"),
+         "options": [("education", "Education / Scholarship", "கல்வி / உதவித்தொகை"), ("employment", "Employment / Livelihood", "வேலைவாய்ப்பு"),
                      ("financial", "Financial assistance", "நிதி உதவி"), ("equipment", "Assistive equipment", "உதவி உபகரணங்கள்"),
                      ("other", "Other", "மற்றவை")]},
     ],
 }
 
 
-def category_score(row, category_key):
-    category = CATEGORY_MAP[category_key]
-    text = " ".join([
+def evaluate_scheme_match(row, category_key, answers):
+    """
+    Evaluate relevance score and compile specific reasons why it matched.
+    """
+    category = CATEGORY_MAP.get(category_key, CATEGORY_MAP["other"])
+    
+    row_text = " ".join([
+        row.get("scheme_name", ""),
+        row.get("short_title", ""),
         row.get("categories", ""),
         row.get("sub_categories", ""),
         row.get("tags", ""),
-        row.get("target_beneficiaries", ""),
-        row.get("brief_description", ""),
-        row.get("detailed_description", ""),
-        row.get("eligibility", ""),
-        row.get("benefit_type", ""),
-    ]).lower()
-
-    score = 0
-    for kw in category["keywords"]:
-        if kw.lower() in text:
-            score += 1
-
-    if category["en"].lower() in row.get("categories", "").lower():
-        score += 8
-
-    return score
-
-
-def answer_score(row, category_key, answers):
-    text = " ".join([
-        row.get("scheme_name", ""),
         row.get("target_beneficiaries", ""),
         row.get("beneficiary_type", ""),
-        row.get("categories", ""),
-        row.get("sub_categories", ""),
-        row.get("tags", ""),
         row.get("brief_description", ""),
         row.get("detailed_description", ""),
         row.get("benefits", ""),
@@ -241,103 +226,81 @@ def answer_score(row, category_key, answers):
         row.get("documents_required", ""),
     ]).lower()
 
-    score = category_score(row, category_key)
+    raw_score = 0
+    reasons = []
 
-    # Category-specific semantic matching.
-    mappings = {
-        "agriculture": {
-            "farmer": ["farmer", "agricultur"],
-            "agri_labour": ["agricultural labour", "farm labour", "labour"],
-            "tenant": ["tenant farmer", "tenant", "cultivat"],
-            "fpo": ["fpo", "farmer producer", "farmer group"],
-            "crop": ["crop", "cultivat", "seed", "fertilizer", "irrigation"],
-            "horticulture": ["horticulture", "fruit", "vegetable", "garden"],
-            "dairy": ["dairy", "milk", "cattle"],
-            "livestock": ["livestock", "animal husbandry", "goat", "sheep", "poultry"],
-            "fisheries": ["fish", "fisheries", "aquaculture"],
-        },
-        "education": {
-            "school": ["school", "school student"],
-            "diploma": ["diploma", "polytechnic"],
-            "ug": ["undergraduate", "graduate", "college", "degree"],
-            "pg": ["postgraduate", "post graduate", "master"],
-            "professional": ["professional", "technical", "engineering", "medical"],
-            "government": ["government institution", "government school", "government college"],
-            "aided": ["aided"],
-            "scholarship": ["scholarship", "student", "education"],
-        },
-        "women_child": {
-            "woman": ["women", "woman"],
-            "girl": ["girl", "female"],
-            "mother": ["mother", "maternal", "pregnant", "maternity"],
-            "child": ["child", "children", "girl", "boy"],
-        },
-        "employment": {
-            "jobseeker": ["employment", "job", "placement", "job seeker"],
-            "worker": ["worker", "employee", "employment"],
-            "unemployed": ["unemployed", "employment"],
-            "yes": ["skill", "training", "vocational"],
-        },
-        "business": {
-            "idea": ["startup", "entrepreneur", "new enterprise", "business"],
-            "existing": ["enterprise", "business", "msme"],
-            "expansion": ["expansion", "enterprise", "msme", "business"],
-        },
-        "finance": {
-            "loan": ["loan", "credit", "finance"],
-            "insurance": ["insurance"],
-            "pension": ["pension", "social security"],
-            "assistance": ["financial assistance", "grant", "subsidy", "assistance"],
-        },
-        "housing": {
-            "new": ["housing", "house construction", "new house"],
-            "repair": ["repair", "renovation", "improvement"],
-            "rent": ["rental", "shelter", "housing"],
-        },
-        "health": {
-            "treatment": ["treatment", "medical", "hospital", "health"],
-            "insurance": ["health insurance", "insurance"],
-            "maternal": ["maternal", "child health", "maternity"],
-            "emergency": ["emergency", "ambulance", "medical emergency"],
-        },
-        "senior": {
-            "pension": ["pension", "old age", "senior citizen"],
-            "care": ["elderly", "senior", "old age", "care"],
-        },
-        "disability": {
-            "education": ["disability", "student", "education", "scholarship"],
-            "employment": ["disability", "employment", "job"],
-            "financial": ["disability", "financial", "pension", "assistance"],
-            "equipment": ["assistive", "equipment", "device", "disability"],
-        },
-    }
+    # 1. Category relevance
+    cat_name = category["en"].lower()
+    if cat_name in row.get("categories", "").lower():
+        raw_score += 10
+        reasons.append(f"Official Category matches: {category['en']}")
+    else:
+        for kw in category["keywords"]:
+            if kw.lower() in row_text:
+                raw_score += 1.5
 
-    for value in answers.values():
-        for kw in mappings.get(category_key, {}).get(value, []):
-            if kw in text:
-                score += 2
-
-    # State is a strong filter when the dataset identifies a state.
-    state = answers.get("state", "").strip().lower()
-    if state:
-        row_state = row.get("state", "").strip().lower()
-        if row_state == state:
-            score += 12
+    # 2. State matching
+    user_state = str(answers.get("state", "")).strip().lower()
+    row_state = str(row.get("state", "")).strip().lower()
+    if user_state:
+        if row_state and row_state == user_state:
+            raw_score += 12
+            reasons.append(f"State specific scheme for {answers.get('state')}")
         elif row_state in ("central", "all india", "india", "pan india", ""):
-            score += 3
+            raw_score += 4
+            reasons.append("Central / Pan-India scheme accessible across states")
         else:
-            score -= 10
+            raw_score -= 8
 
-    return score
+    # 3. Profile factors
+    occupation = str(answers.get("occupation", "")).strip().lower()
+    if occupation and occupation in row_text:
+        raw_score += 3
+        reasons.append(f"Targeted for beneficiary profile: {occupation.title()}")
+
+    community = str(answers.get("community", "")).strip().lower()
+    if community in ("sc", "st") and any(x in row_text for x in ["sc", "st", "scheduled caste", "scheduled tribe", "dalit", "tribal"]):
+        raw_score += 3
+        reasons.append(f"Special benefits identified for {community.upper()} community")
+
+    gender = str(answers.get("gender", "")).strip().lower()
+    if gender == "female" and any(x in row_text for x in ["women", "woman", "girl", "female", "maternity", "widow"]):
+        raw_score += 3
+        reasons.append("Dedicated provisions for women beneficiaries")
+
+    # 4. Answers semantic match
+    for k, v in answers.items():
+        if not v or k in ("state", "district", "age", "income"):
+            continue
+        v_str = str(v).lower()
+        if len(v_str) > 2 and v_str in row_text:
+            raw_score += 2
+
+    # Calibrate to realistic 0-100 percentage
+    if raw_score >= 18:
+        pct = min(98, 85 + int(raw_score * 0.5))
+    elif raw_score >= 10:
+        pct = min(84, 72 + int(raw_score * 0.8))
+    elif raw_score >= 5:
+        pct = min(71, 60 + int(raw_score * 1.5))
+    elif raw_score > 0:
+        pct = max(45, min(59, 45 + int(raw_score * 2.0)))
+    else:
+        pct = 0
+
+    if not reasons and pct > 0:
+        reasons.append(f"General match with {category['en']}")
+
+    return pct, reasons
 
 
-def public_scheme(row, score):
+def public_scheme(row, score, reasons):
     return {
         "name": row.get("scheme_name", "Unnamed scheme"),
         "short_title": row.get("short_title", ""),
-        "state": row.get("state", ""),
+        "state": row.get("state", "Central / All India"),
         "level": row.get("level", ""),
-        "department": row.get("department", ""),
+        "department": row.get("department", "Government Department"),
         "category": row.get("categories", ""),
         "benefit_type": row.get("benefit_type", ""),
         "description": row.get("brief_description", ""),
@@ -347,6 +310,8 @@ def public_scheme(row, score):
         "application_mode": row.get("application_mode", ""),
         "source_url": row.get("source_url", ""),
         "match_score": score,
+        "reasons": reasons[:3],
+        "status_label": "Possible Match — Verify Official Eligibility"
     }
 
 
@@ -374,28 +339,26 @@ def scheme_match():
     if category not in CATEGORY_MAP:
         return jsonify({"error": "Please select a valid category."}), 400
 
-    state = str(answers.get("state", "")).strip()
     rows = load_schemes()
-
     if not rows:
         return jsonify({
-            "error": "Scheme database was not found. Keep the supplied schemes.csv.xls file in the Flask project folder."
+            "error": "Scheme database was not found. Please ensure schemes.csv.xls is present in the project directory."
         }), 500
 
     scored = []
     for row in rows:
-        score = answer_score(row, category, answers)
-        if score > 0:
-            scored.append((score, row))
+        pct_score, reasons = evaluate_scheme_match(row, category, answers)
+        if pct_score >= 45:
+            scored.append((pct_score, reasons, row))
 
-    scored.sort(key=lambda x: (-x[0], x[1].get("scheme_name", "")))
+    scored.sort(key=lambda x: (-x[0], x[2].get("scheme_name", "")))
 
-    # Prefer the strongest matches; avoid presenting hundreds of loosely related schemes.
-    results = [public_scheme(row, score) for score, row in scored[:20]]
+    results = [public_scheme(row, score, reasons) for score, reasons, row in scored[:25]]
 
     return jsonify({
         "count": len(results),
         "results": results,
+        "disclaimer": "Possible Match — Verify Official Eligibility",
         "message": "These schemes may be relevant based on the answers provided.",
         "note": "This is preliminary matching only. Eligibility is not confirmed. Check the official scheme source for current rules and documents."
     })
