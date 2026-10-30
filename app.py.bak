@@ -1,0 +1,504 @@
+"""
+GovEase AI — Bilingual Government Document Understanding and Scheme Recommendation Assistant
+Main Flask Application
+"""
+
+import os
+import io
+import re
+import time
+import json
+import uuid
+import logging
+from flask import (
+    Flask, render_template, request, redirect, url_for,
+    session, flash, send_from_directory, send_file, jsonify, make_response
+)
+from werkzeug.utils import secure_filename
+
+# Modular subsystem imports
+from auth_system import (
+    auth_bp, init_auth_db, login_required, current_user,
+    save_document_history, get_user_history, get_history_entry, delete_history_entry
+)
+from scheme_recommendation import scheme_bp
+from readability_analyzer import analyze_readability
+from ocr_pipeline import process_image_file, process_pdf_file, OCR_LANGUAGE, HAS_TAMIL
+from document_classifier import classify_document, extract_general_fields, build_fields_i18n, DOCUMENT_TYPES
+from court_processor import simplify_court_order
+from summarizer import summarize_document
+from pdf_exporter import generate_pdf_report
+
+# ============================================================
+# FLASK CONFIGURATION
+# ============================================================
+
+app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    "govease-ai-secret-key-production-college-demo-2026"
+)
+
+# Register Blueprints
+app.register_blueprint(scheme_bp)
+app.register_blueprint(auth_bp)
+
+# Initialize Database
+init_auth_db()
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+PROCESSED_FOLDER = os.path.join(BASE_DIR, "processed")
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(PROCESSED_FOLDER, exist_ok=True)
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["PROCESSED_FOLDER"] = PROCESSED_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB limit
+
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf"}
+
+# Configure minimal server-side logging for upload auditing and debugging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger("govease.upload")
+
+def normalize_extension(filename):
+    """Safely extracts and normalizes the file extension in lowercase with whitespace trimmed."""
+    if not filename or "." not in filename:
+        return ""
+    cleaned = filename.strip()
+    parts = cleaned.rsplit(".", 1)
+    if len(parts) < 2:
+        return ""
+    return parts[1].strip().lower()
+
+def allowed_file(filename):
+    """Checks whether the filename has a supported extension (case-insensitive, whitespace trimmed)."""
+    return normalize_extension(filename) in ALLOWED_EXTENSIONS
+
+def get_safe_display_name(filename, ext):
+    """
+    Returns a sanitized display filename for UI and database history.
+    Preserves Unicode / Tamil characters, spaces, and numbers while stripping control characters.
+    """
+    if not filename:
+        return f"document.{ext}"
+    cleaned = filename.strip()
+    cleaned = os.path.basename(cleaned.replace("\\", "/"))
+    # Remove null bytes and ASCII control characters, preserving Unicode letters
+    cleaned = re.sub(r"[\x00-\x1f\x7f]", "", cleaned)
+    if not cleaned:
+        return f"document.{ext}"
+    return cleaned
+
+def validate_uploaded_file(file_storage):
+    """
+    Performs comprehensive multi-layer file validation:
+    1. Checks if a file is attached and filename is non-empty.
+    2. Validates extension against ALLOWED_EXTENSIONS (case-insensitively, whitespace trimmed).
+    3. Handles spaces and Unicode / non-English filenames safely.
+    4. Validates magic bytes / content structure to detect extension mismatch.
+    5. Detects empty files (0 bytes).
+    6. Does not reject valid PDFs whose browser MIME type is application/octet-stream.
+
+    Returns: (is_valid: bool, error_message: str | None, normalized_ext: str, display_filename: str)
+    """
+    if not file_storage or not file_storage.filename or file_storage.filename.strip() == "":
+        return False, "Please select a valid document file (JPG, PNG, or PDF).", "", ""
+
+    raw_name = file_storage.filename.strip()
+    base_name = os.path.basename(raw_name.replace("\\", "/"))
+    ext = normalize_extension(base_name)
+    display_name = get_safe_display_name(base_name, ext if ext else "dat")
+
+    if not ext or ext not in ALLOWED_EXTENSIONS:
+        err = (
+            f"Unsupported file format (.{ext if ext else 'unknown'}). "
+            "Please upload a document in PDF (.pdf), JPEG (.jpg, .jpeg), or PNG (.png) format."
+        )
+        return False, err, ext, display_name
+
+    # Read content header for magic byte verification
+    try:
+        header = file_storage.read(2048)
+        file_storage.seek(0)
+    except Exception as e:
+        return False, f"Could not read uploaded file stream: {str(e)}", ext, display_name
+
+    if len(header) == 0:
+        return False, "The uploaded file is empty (0 bytes). Please upload a valid document.", ext, display_name
+
+    # Content signature verification to prevent extension mismatch/spoofing
+    if ext == "pdf":
+        if b"%PDF-" not in header[:1024]:
+            return False, "File content does not match the .pdf extension. The file is not a valid PDF document.", ext, display_name
+    elif ext in {"jpg", "jpeg"}:
+        if not header.startswith(b"\xff\xd8\xff"):
+            return False, "File content does not match the JPEG image extension. The file is not a valid JPEG image.", ext, display_name
+    elif ext == "png":
+        if not header.startswith(b"\x89PNG\r\n\x1a\n"):
+            return False, "File content does not match the PNG image extension. The file is not a valid PNG image.", ext, display_name
+
+    return True, None, ext, display_name
+
+# Server-side cache for current active document results (prevents cookie overflow)
+_ACTIVE_RESULTS = {}
+
+def get_current_result():
+    token = session.get("doc_token")
+    if token and token in _ACTIVE_RESULTS:
+        return _ACTIVE_RESULTS[token]
+    user = current_user()
+    last_id = session.get("last_history_id")
+    if user and last_id:
+        entry = get_history_entry(last_id, user["id"])
+        if entry:
+            return entry.get("result", {})
+    return None
+
+
+# ============================================================
+# CONTEXT PROCESSORS & ERROR HANDLERS
+# ============================================================
+
+@app.context_processor
+def inject_global_data():
+    return {
+        "current_user": current_user(),
+        "has_tamil_ocr": HAS_TAMIL,
+        "ocr_language": OCR_LANGUAGE
+    }
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    flash("The uploaded file exceeds the 16MB maximum limit. Please upload a smaller file.", "error")
+    return redirect(url_for("index"))
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template("index.html", error="The requested page could not be found."), 404
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return render_template("index.html", error="An internal system error occurred. Please try again with a clearer document."), 500
+
+
+# ============================================================
+# MAIN DOCUMENT ANALYSIS ROUTE
+# ============================================================
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    error = None
+    result = None
+
+    if request.method == "POST":
+        logger.info("Upload request received")
+        if "file" not in request.files:
+            error = "No document file was selected. Please choose a file to upload."
+            logger.warning("Upload validation failed: 'file' key missing in request.files")
+            return render_template("index.html", error=error, result=None)
+
+        file = request.files["file"]
+        raw_filename = getattr(file, "filename", "") or ""
+        content_type = getattr(file, "content_type", "") or ""
+        logger.info("Upload file received: raw_filename='%s', content_type='%s'", raw_filename, content_type)
+
+        is_valid, val_error, ext, display_filename = validate_uploaded_file(file)
+        if not is_valid:
+            logger.warning("Upload validation failed for '%s': %s", raw_filename, val_error)
+            return render_template("index.html", error=val_error, result=None)
+
+        logger.info("Upload validation successful: display_filename='%s', ext='%s'", display_filename, ext)
+
+        # Unique server-side filename prevents overwriting and race conditions
+        timestamp = int(time.time())
+        unique_token = uuid.uuid4().hex[:12]
+        unique_server_filename = f"{timestamp}_{unique_token}.{ext}"
+        upload_path = os.path.join(UPLOAD_FOLDER, unique_server_filename)
+
+        try:
+            file.save(upload_path)
+            if not os.path.exists(upload_path) or os.path.getsize(upload_path) == 0:
+                raise IOError("Uploaded file could not be saved to disk or is empty.")
+            logger.info("File successfully saved: '%s' (%d bytes)", upload_path, os.path.getsize(upload_path))
+
+            # 1. OCR Extraction (Images & PDFs)
+            if ext == "pdf":
+                ocr_data = process_pdf_file(upload_path, display_filename, PROCESSED_FOLDER)
+                logger.info(
+                    "PDF extraction successful: pages=%d, text_len=%d, confidence=%.1f%%, quality=%s",
+                    ocr_data.get("total_pages", 1),
+                    len(ocr_data.get("text", "")),
+                    ocr_data.get("confidence", 0.0),
+                    ocr_data.get("quality", "N/A")
+                )
+            else:
+                ocr_data = process_image_file(upload_path, display_filename, PROCESSED_FOLDER)
+                logger.info(
+                    "Image OCR successful: text_len=%d, confidence=%.1f%%, quality=%s",
+                    len(ocr_data.get("text", "")),
+                    ocr_data.get("confidence", 0.0),
+                    ocr_data.get("quality", "N/A")
+                )
+
+            extracted_text = ocr_data["text"]
+
+            if not extracted_text or len(extracted_text.strip()) < 10:
+                error = "Could not extract readable text from the document. Please ensure the document is clear, well-lit, and not overly blurry."
+                logger.warning("Extraction warning for '%s': insufficient readable text (len=%d)", display_filename, len(extracted_text.strip()) if extracted_text else 0)
+                return render_template("index.html", error=error, result=None)
+
+            # 2. Document Classification
+            doc_type, class_conf, matched_kws = classify_document(extracted_text)
+            doc_type_ta = DOCUMENT_TYPES.get(doc_type, "பொது அரசு ஆவணம்")
+
+            # 3. Field Extraction
+            fields = extract_general_fields(extracted_text, doc_type)
+
+            # 4. Court Order Handling
+            court_order = None
+            if doc_type == "Court Order":
+                court_order = simplify_court_order(extracted_text)
+                fields["Case Number"] = court_order["case_number"]
+                fields["Court Name"] = court_order["court_name"]
+                fields["Judge"] = court_order["judge"]
+                fields["Order Date"] = court_order["order_date"]
+                fields["Petitioner"] = court_order["petitioner"]
+                fields["Respondent"] = court_order["respondent"]
+                fields["Outcome"] = court_order["outcome"]
+
+            fields_i18n = build_fields_i18n(fields)
+
+            # 5. Readability Analysis
+            readability = analyze_readability(extracted_text)
+
+            # 6. AI Summarization (Quick Summary, Detailed Summary, Action Points in EN & TA)
+            summary = summarize_document(extracted_text, doc_type, fields)
+
+            result = {
+                "filename": display_filename,
+                "text": extracted_text,
+                "confidence": ocr_data["confidence"],
+                "quality": ocr_data["quality"],
+                "warning": ocr_data.get("warning"),
+                "best_version": ocr_data["best_version"],
+                "best_psm": ocr_data.get("best_psm"),
+                "document_detected": ocr_data.get("document_detected", True),
+                "processed_filename": ocr_data.get("processed_filename"),
+                "document_type": doc_type,
+                "document_type_ta": doc_type_ta,
+                "classification_confidence": class_conf,
+                "classification_keywords": matched_kws,
+                "fields": fields,
+                "fields_i18n": fields_i18n,
+                "court_order": court_order,
+                "readability": readability,
+                "summary": summary
+            }
+
+            # 7. Auto-save to Document History for logged in users
+            user = current_user()
+            if user:
+                history_id = save_document_history(
+                    user_id=user["id"],
+                    filename=display_filename,
+                    document_type=doc_type,
+                    document_type_ta=doc_type_ta,
+                    confidence=ocr_data["confidence"],
+                    processed_filename=ocr_data.get("processed_filename", ""),
+                    result_dict=result
+                )
+                result["history_id"] = history_id
+                session["last_history_id"] = history_id
+                flash("Document processed and saved to your history successfully.", "info")
+
+            # Store token in server cache & session cookie
+            token = str(uuid.uuid4())
+            _ACTIVE_RESULTS[token] = result
+            session["doc_token"] = token
+            logger.info("Processing complete and active token generated for '%s'", display_filename)
+
+        except Exception as exc:
+            logger.error("Processing error for '%s': %s", display_filename, str(exc))
+            error = f"Document processing failed: {str(exc)}. Please check the file and try again."
+
+    return render_template("index.html", error=error, result=result)
+
+
+# ============================================================
+# DOCUMENT HISTORY & VIEW ROUTES
+# ============================================================
+
+@app.route("/history")
+@login_required
+def history():
+    user = current_user()
+    user_history = get_user_history(user["id"])
+    return render_template("history.html", history_items=user_history)
+
+
+@app.route("/document/<int:history_id>")
+@login_required
+def view_document(history_id):
+    user = current_user()
+    entry = get_history_entry(history_id, user["id"])
+    if not entry:
+        flash("Document history record not found or access denied.", "error")
+        return redirect(url_for("history"))
+
+    result = entry.get("result", {})
+    result["history_id"] = history_id
+    session["last_history_id"] = history_id
+    token = str(uuid.uuid4())
+    _ACTIVE_RESULTS[token] = result
+    session["doc_token"] = token
+
+    return render_template("index.html", result=result, from_history=True)
+
+
+@app.route("/history/delete/<int:history_id>", methods=["POST"])
+@login_required
+def delete_history(history_id):
+    user = current_user()
+    deleted = delete_history_entry(history_id, user["id"])
+    if deleted:
+        flash("Document history entry deleted successfully.", "info")
+    else:
+        flash("Unable to delete document history entry.", "error")
+    return redirect(url_for("history"))
+
+
+# ============================================================
+# SUMMARY EXPORT ROUTES (PDF & TEXT)
+# ============================================================
+
+@app.route("/export_pdf/<int:history_id>")
+@login_required
+def export_pdf_history(history_id):
+    user = current_user()
+    entry = get_history_entry(history_id, user["id"])
+    if not entry:
+        flash("Document not found.", "error")
+        return redirect(url_for("history"))
+
+    result = entry.get("result", {})
+    pdf_bytes = generate_pdf_report(result, entry.get("filename", "Document"))
+
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"GovEase_Summary_{history_id}.pdf"
+    )
+
+
+@app.route("/export_pdf_direct")
+def export_pdf_direct():
+    result = get_current_result()
+    if not result:
+        flash("No recent document summary found to export.", "error")
+        return redirect(url_for("index"))
+
+    pdf_bytes = generate_pdf_report(result, result.get("filename", "Document"))
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"GovEase_Summary_{int(time.time())}.pdf"
+    )
+
+
+@app.route("/export_text")
+def export_text():
+    result = get_current_result()
+    if not result:
+        flash("No active document summary found to export.", "error")
+        return redirect(url_for("index"))
+
+    summary = result.get("summary", {})
+    quick_en = summary.get("quick_summary", {}).get("en", [])
+    quick_ta = summary.get("quick_summary", {}).get("ta", [])
+    act_en = summary.get("action_points", {}).get("en", [])
+    act_ta = summary.get("action_points", {}).get("ta", [])
+    det_en = summary.get("detailed_summary", {}).get("en", "")
+    det_ta = summary.get("detailed_summary", {}).get("ta", "")
+
+    content = f"""============================================================
+GOVEASE AI — BILINGUAL GOVERNMENT DOCUMENT SUMMARY REPORT
+============================================================
+File: {result.get('filename')}
+Document Type: {result.get('document_type')} ({result.get('document_type_ta')})
+OCR Quality: {result.get('quality')} (Confidence: {result.get('confidence')}%)
+Date: {time.strftime('%Y-%m-%d %H:%M:%S')}
+
+------------------------------------------------------------
+1. QUICK SUMMARY (ENGLISH):
+------------------------------------------------------------
+""" + "\n".join(f"• {b}" for b in quick_en) + f"""
+
+------------------------------------------------------------
+1. சுருக்கக் குறிப்புகள் (தமிழ்):
+------------------------------------------------------------
+""" + "\n".join(f"• {b}" for b in quick_ta) + f"""
+
+------------------------------------------------------------
+2. NEXT ACTION POINTS / அடுத்த கட்ட நடவடிக்கைகள்:
+------------------------------------------------------------
+(English):
+""" + "\n".join(f"{i+1}. {a}" for i, a in enumerate(act_en)) + f"""
+
+(தமிழ்):
+""" + "\n".join(f"{i+1}. {a}" for i, a in enumerate(act_ta)) + f"""
+
+------------------------------------------------------------
+3. DETAILED EXPLANATION:
+------------------------------------------------------------
+{det_en}
+
+------------------------------------------------------------
+4. EXTRACTED INFORMATION:
+------------------------------------------------------------
+""" + "\n".join(f"• {f.get('label_en')} / {f.get('label_ta')}: {f.get('value')}" for f in result.get('fields_i18n', [])) + f"""
+
+============================================================
+Disclaimer: Informational guidance only. Verify with authorities.
+============================================================
+"""
+
+    response = make_response(content)
+    response.headers["Content-Disposition"] = f"attachment; filename=GovEase_Summary_{int(time.time())}.txt"
+    response.headers["Content-Type"] = "text/plain; charset=utf-8"
+    return response
+
+
+# ============================================================
+# SERVE PROCESSED PREVIEW FILES
+# ============================================================
+
+@app.route("/processed/<filename>")
+def processed_file(filename):
+    safe_name = secure_filename(filename)
+    return send_from_directory(PROCESSED_FOLDER, safe_name)
+
+
+# ============================================================
+# APPLICATION ENTRYPOINT
+# ============================================================
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("GovEase AI — Bilingual Government Document Understanding")
+    print("OCR Language:", OCR_LANGUAGE, "| Tamil Support:", "YES" if HAS_TAMIL else "NO (eng fallback)")
+    print("Web URL: http://127.0.0.1:5000")
+    print("=" * 60)
+
+    app.run(
+        debug=False,
+        host="127.0.0.1",
+        port=5000
+    )

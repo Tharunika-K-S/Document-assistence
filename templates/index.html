@@ -257,10 +257,21 @@
             transition: all 0.2s ease;
         }
 
-        .upload-zone:hover {
+        .upload-zone:hover, .upload-zone.dragover {
             border-color: var(--primary);
             background: #eff6ff;
             transform: translateY(-1px);
+        }
+
+        .upload-zone.dragover {
+            border-style: solid;
+            background: #e0e7ff;
+            transform: scale(1.008);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .upload-icon {
@@ -674,6 +685,7 @@
             .hero-banner { padding: 24px 20px; }
         }
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='voice_assistant.css') }}">
 </head>
 <body>
 
@@ -763,6 +775,11 @@
             <span class="doc-tag">📢 G.O. & Circulars / அரசாணை</span>
             <span class="doc-tag">🛡️ Any Readable Gov Document / பொது ஆவணம்</span>
         </div>
+        <div style="margin-top:18px;">
+            <button type="button" class="voice-read-btn" onclick="window.GovEaseVoice.openModal()" style="background:rgba(255,255,255,0.22); color:white; border-color:rgba(255,255,255,0.45); font-size:13.5px; padding:8px 18px; border-radius:24px;">
+                🎙️ <span class="en">Ask Voice Assistant</span><span class="ta">குரல் உதவியாளரிடம் கேளுங்கள்</span>
+            </button>
+        </div>
     </section>
 
     <!-- UPLOAD CARD -->
@@ -778,20 +795,42 @@
         </div>
 
         <form method="POST" enctype="multipart/form-data" id="uploadForm">
-            <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-zone" id="uploadZone">
                 <div class="upload-icon">📄</div>
                 <div class="upload-label">
                     <span class="en">Click or drag & drop your document here</span>
                     <span class="ta">உங்கள் ஆவணத்தை இங்கு கிளிக் செய்து தேர்ந்தெடுக்கவும்</span>
                 </div>
                 <div class="upload-hint">
-                    Supports high-resolution scans, multi-page PDFs, and phone photos in English & Tamil
+                    Supports high-resolution scans, multi-page PDFs, and phone photos in English & Tamil (PDF, JPG, PNG up to 16 MB)
                 </div>
                 <div class="file-chosen-name" id="fileNameDisplay"></div>
-                <input type="file" name="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf" style="display:none;" onchange="handleFileSelected(this)">
+                <input type="file" name="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf,.PNG,.JPG,.JPEG,.PDF" style="display:none;">
+            </div>
+
+            <div style="text-align: center; margin-top: 18px;">
                 <button type="submit" class="btn-upload" id="submitBtn">
                     ⚡ <span class="en">Analyze Document</span><span class="ta">ஆவணத்தை ஆய்வு செய்</span>
                 </button>
+            </div>
+
+            <!-- Client-side error notification -->
+            <div id="clientErrorBox" class="flash error" style="display:none; margin-top:16px;">
+                <span>⚠️</span>
+                <div id="clientErrorMsg"></div>
+            </div>
+
+            <!-- Loading Spinner & Indicator -->
+            <div id="loadingIndicator" style="display:none; text-align:center; margin-top:20px; padding:20px; background:#eff6ff; border-radius:14px; border:1px solid #bfdbfe;">
+                <div class="spinner" style="display:inline-block; width:38px; height:38px; border:4px solid #bfdbfe; border-top-color:#2563eb; border-radius:50%; animation:spin 1s linear infinite; margin-bottom:12px;"></div>
+                <div style="font-weight:700; color:#1e3a8a; font-size:15.5px;">
+                    <span class="en">Processing Document with Bilingual AI...</span>
+                    <span class="ta">ஆவணத்தை இருமொழி AI மூலம் ஆய்வு செய்கிறது...</span>
+                </div>
+                <div style="font-size:12.5px; color:#64748b; margin-top:5px;">
+                    <span class="en">Extracting text, analyzing readability, and summarizing. Please wait.</span>
+                    <span class="ta">உரையைப் பிரித்தெடுத்து, வாசிப்புத்திறனைப் பகுப்பாய்வு செய்து சுருக்கம் தயார் செய்யப்படுகிறது. சற்று காத்திருக்கவும்.</span>
+                </div>
             </div>
         </form>
     </section>
@@ -859,7 +898,12 @@
                     🤖 <span class="en">AI Document Summary & Guidance</span>
                     <span class="ta">செயற்கை நுண்ணறிவு ஆவண சுருக்கம் & வழிகாட்டல்</span>
                 </h3>
-                <span class="badge type">Bilingual (English + தமிழ்)</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="voice-read-btn" onclick="window.GovEaseVoice.readElement('.tab-pane.active', 'AI Summary', this)" title="Read active summary aloud">
+                        🔊 <span class="en">Read Summary</span><span class="ta">சுருக்கத்தைக் கேட்க</span>
+                    </button>
+                    <span class="badge type">Bilingual (English + தமிழ்)</span>
+                </div>
             </div>
 
             <div class="summary-tabs">
@@ -1004,9 +1048,14 @@
                             🔎 <span class="en">Extracted OCR Text</span>
                             <span class="ta">பிரித்தெடுக்கப்பட்ட OCR உரை</span>
                         </h3>
-                        <button class="btn-action outline" onclick="copyOcrText()" style="padding:4px 10px; font-size:12px;">
-                            📋 Copy Text
-                        </button>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button type="button" class="voice-read-btn" onclick="window.GovEaseVoice.readElement('#ocrTextContainer', 'Extracted OCR Text', this)" title="Read extracted text aloud">
+                                🔊 <span class="en">Read Aloud</span><span class="ta">உரக்கப் படி</span>
+                            </button>
+                            <button class="btn-action outline" onclick="copyOcrText()" style="padding:4px 10px; font-size:12px;">
+                                📋 Copy Text
+                            </button>
+                        </div>
                     </div>
                     <div class="ocr-textbox" id="ocrTextContainer">{{ result.text }}</div>
                 </div>
@@ -1098,15 +1147,152 @@ function setLang(l) {
 }
 setLang(localStorage.getItem('govease_lang') || 'en');
 
-// 2. File Selection Handler
-function handleFileSelected(input) {
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        const display = document.getElementById('fileNameDisplay');
-        display.textContent = "Selected: " + file.name + " (" + (file.size / 1024 / 1024).toFixed(2) + " MB)";
-        display.style.display = 'block';
+// 2. File Selection, Drag & Drop, and Upload Form Handling
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const fileNameDisplay = document.getElementById('fileNameDisplay');
+const uploadForm = document.getElementById('uploadForm');
+const submitBtn = document.getElementById('submitBtn');
+const loadingIndicator = document.getElementById('loadingIndicator');
+const clientErrorBox = document.getElementById('clientErrorBox');
+const clientErrorMsg = document.getElementById('clientErrorMsg');
+
+let isSubmitting = false;
+
+function showUploadError(msg) {
+    if (clientErrorBox && clientErrorMsg) {
+        clientErrorMsg.textContent = msg;
+        clientErrorBox.style.display = 'flex';
+        clientErrorBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+        alert(msg);
     }
 }
+
+function clearUploadError() {
+    if (clientErrorBox) {
+        clientErrorBox.style.display = 'none';
+    }
+}
+
+function updateFileDisplay(file) {
+    if (file) {
+        clearUploadError();
+        const sizeMb = (file.size / 1024 / 1024).toFixed(2);
+        fileNameDisplay.textContent = "Selected: " + file.name + " (" + sizeMb + " MB)";
+        fileNameDisplay.style.display = 'block';
+    }
+}
+
+if (uploadZone && fileInput) {
+    uploadZone.addEventListener('click', (e) => {
+        if (isSubmitting) return;
+        // Reset file input value on click so selecting the same file triggers change event
+        fileInput.value = '';
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files && fileInput.files[0]) {
+            updateFileDisplay(fileInput.files[0]);
+        }
+    });
+
+    // Drag & Drop
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!isSubmitting) {
+                uploadZone.classList.add('dragover');
+            }
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadZone.classList.remove('dragover');
+        });
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+        if (isSubmitting) return;
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+            fileInput.files = dt.files;
+            updateFileDisplay(dt.files[0]);
+        }
+    });
+}
+
+if (uploadForm) {
+    uploadForm.addEventListener('submit', (e) => {
+        clearUploadError();
+
+        if (isSubmitting) {
+            e.preventDefault();
+            return false;
+        }
+
+        if (!fileInput.files || fileInput.files.length === 0) {
+            e.preventDefault();
+            showUploadError("Please select a document file (PDF, JPG, PNG) to analyze.");
+            fileInput.click();
+            return false;
+        }
+
+        const file = fileInput.files[0];
+        const fname = file.name || "";
+        const parts = fname.split('.');
+        const ext = parts.length > 1 ? parts.pop().toLowerCase().trim() : "";
+
+        if (!['pdf', 'jpg', 'jpeg', 'png'].includes(ext)) {
+            e.preventDefault();
+            showUploadError("Unsupported file type (." + (ext || "unknown") + "). Supported formats are PDF (.pdf), JPEG (.jpg, .jpeg), and PNG (.png).");
+            return false;
+        }
+
+        if (file.size === 0) {
+            e.preventDefault();
+            showUploadError("The selected file is empty (0 bytes). Please choose a valid document.");
+            return false;
+        }
+
+        if (file.size > 16 * 1024 * 1024) {
+            e.preventDefault();
+            showUploadError("The file size exceeds the 16MB maximum limit. Please choose a smaller file.");
+            return false;
+        }
+
+        // Form valid - enter loading state and block duplicate submissions
+        isSubmitting = true;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.6';
+            submitBtn.style.cursor = 'not-allowed';
+            submitBtn.innerHTML = "⏳ Processing...";
+        }
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'block';
+        }
+    });
+}
+
+// Reset loading state if page is restored from bfcache
+window.addEventListener('pageshow', (event) => {
+    isSubmitting = false;
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+        submitBtn.innerHTML = '⚡ <span class="en">Analyze Document</span><span class="ta">ஆவணத்தை ஆய்வு செய்</span>';
+    }
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+});
 
 // 3. Tab Switcher
 function switchSummaryTab(tabId, btn) {
@@ -1153,5 +1339,6 @@ window.addEventListener('DOMContentLoaded', () => {
 {% endif %}
 </script>
 
+    <script src="{{ url_for('static', filename='voice_assistant.js') }}"></script>
 </body>
 </html>

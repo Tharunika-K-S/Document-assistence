@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Government Scheme Recommendation | GovEase AI</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --navy: #0f1f42;
+            --navy-light: #1e3a8a;
+            --dark: #0f172a;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --bg: #f8fafc;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", "Noto Sans Tamil", Arial, sans-serif;
+            background: linear-gradient(135deg, #eef4ff, #f8fbff);
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        /* TOPBAR NAVIGATION */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: linear-gradient(90deg, #0a1128, #162f65);
+            color: white;
+            padding: 12px 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+
+        .topbar-inner {
+            max-width: 1200px;
+            margin: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .brand a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .brand small {
+            display: block;
+            font-size: 11px;
+            font-weight: 400;
+            opacity: 0.85;
+            margin-top: 1px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 7px 12px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: white;
+            background: rgba(255,255,255,0.16);
+        }
+
+        .lang-switch {
+            display: flex;
+            gap: 4px;
+            margin-left: 8px;
+            border-left: 1px solid rgba(255,255,255,0.25);
+            padding-left: 12px;
+        }
+
+        .lang-btn {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .lang-btn.active {
+            background: white;
+            color: var(--navy);
+        }
+
+        /* MAIN CONTAINER */
+        .container {
+            max-width: 1150px;
+            margin: 28px auto;
+            padding: 0 16px;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #1e3a8a, #4338ca);
+            color: white;
+            border-radius: 20px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 25px rgba(30,58,138,0.15);
+        }
+
+        .hero h1 { margin: 0 0 8px; font-size: 26px; font-weight: 800; }
+        .hero p { margin: 0; font-size: 14.5px; opacity: 0.9; line-height: 1.5; }
+
+        .card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 22px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+        }
+
+        .card h2 {
+            margin: 0 0 14px;
+            font-size: 18px;
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .profile-note {
+            color: var(--muted);
+            font-size: 13.5px;
+            margin-top: -6px;
+            margin-bottom: 16px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+        }
+
+        .field label {
+            display: block;
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 6px;
+            color: #334155;
+        }
+
+        .field input, .field select {
+            width: 100%;
+            padding: 11px 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            background: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+        .field input:focus, .field select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .cat {
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .cat:hover {
+            border-color: var(--primary);
+            background: #f8fbff;
+            transform: translateY(-1px);
+        }
+
+        .cat.selected {
+            border: 2px solid var(--primary);
+            background: #eff6ff;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.15);
+        }
+
+        .icon { font-size: 26px; display: block; margin-bottom: 6px; }
+        .small { color: var(--muted); font-size: 12px; }
+
+        .question {
+            margin: 16px 0;
+        }
+        .question label {
+            display: block;
+            font-weight: 700;
+            font-size: 13.5px;
+            margin-bottom: 6px;
+        }
+        .question select {
+            width: 100%;
+            padding: 11px 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .btn-search {
+            border: 0;
+            border-radius: 10px;
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            font-size: 14.5px;
+            cursor: pointer;
+            margin-top: 14px;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.25);
+            transition: background 0.15s ease;
+        }
+        .btn-search:hover { background: var(--primary-hover); }
+        .btn-search:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .disclaimer-box {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-left: 4px solid #f59e0b;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: #92400e;
+            font-size: 13px;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+
+        .result {
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 14px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .result h3 {
+            margin: 0;
+            font-size: 17px;
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .score-badge {
+            background: #eff6ff;
+            color: var(--primary);
+            border: 1px solid #bfdbfe;
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 13px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #334155;
+            border-radius: 16px;
+            padding: 3px 8px;
+            font-size: 11.5px;
+            font-weight: 600;
+            margin: 3px 2px;
+        }
+
+        .badge.possible-match {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+
+        .progress {
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 8px 0 14px;
+        }
+        .progress span {
+            display: block;
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .reason {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin: 4px 0;
+            font-size: 13px;
+            color: #166534;
+        }
+
+        /* HYBRID RECOMMENDATION STATUS BADGES & SCORES */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 11px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .status-eligible {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+        }
+        .status-potentially_eligible {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+        .status-insufficient_information {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        .status-ineligible {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+        }
+
+        .score-pill {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 11.5px;
+            margin: 2px 4px 2px 0;
+            border: 1px solid #e2e8f0;
+        }
+        .score-pill b {
+            color: #0f172a;
+        }
+
+        .verification-card {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 10px 0;
+            font-size: 13px;
+            color: #92400e;
+        }
+
+        .search-input-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .search-input-box input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 14.5px;
+            outline: none;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+        .search-input-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .mini {
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #1e40af;
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s ease;
+        }
+        .mini:hover { background: #f8fafc; border-color: #94a3b8; }
+        .mini.saved { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .compare-bar {
+            position: sticky;
+            bottom: 16px;
+            background: #0f172a;
+            color: white;
+            border-radius: 14px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            z-index: 50;
+        }
+
+        .compare-bar button {
+            background: var(--primary);
+            color: white;
+            border: 0;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .compare-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.65);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 1000;
+        }
+
+        .compare-box {
+            background: white;
+            border-radius: 20px;
+            max-width: 1050px;
+            width: 100%;
+            max-height: 88vh;
+            overflow: auto;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+            font-size: 13.5px;
+        }
+        .compare-table th, .compare-table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .compare-table th { background: #f8fafc; font-weight: 700; color: #334155; }
+
+        .hidden { display: none !important; }
+        .loading { text-align: center; color: var(--muted); padding: 20px; }
+        .error { background: #fef2f2; color: #991b1b; padding: 14px; border-radius: 10px; border: 1px solid #fecaca; }
+
+        .saved-card {
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 8px 0;
+        }
+
+        /* BILINGUAL VISIBILITY */
+        .ta { display: none; }
+        .ta-mode .en { display: none !important; }
+        .ta-mode .ta { display: inline !important; }
+    </style>
+</head>
+<body>
+
+<!-- TOPBAR NAVIGATION -->
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">
+            <a href="{{ url_for('index') }}">
+                <span>🏛️</span>
+                <div>
+                    GovEase AI
+                    <small class="en">Government Document Assistant</small>
+                    <small class="ta">அரசு ஆவண உதவியாளர்</small>
+                </div>
+            </a>
+        </div>
+
+        <nav class="nav-links">
+            <a class="nav-link" href="{{ url_for('index') }}">
+                🏠 <span class="en">Home</span><span class="ta">முகப்பு</span>
+            </a>
+            <a class="nav-link" href="{{ url_for('index') }}#uploadCard">
+                📤 <span class="en">Upload</span><span class="ta">பதிவேற்றம்</span>
+            </a>
+            <a class="nav-link active" href="{{ url_for('scheme_recommendation.scheme_home') }}">
+                🎯 <span class="en">Schemes</span><span class="ta">நலத்திட்டங்கள்</span>
+            </a>
+            {% if logged_in_user %}
+                <a class="nav-link" href="{{ url_for('history') }}">
+                    🕒 <span class="en">History</span><span class="ta">வரலாறு</span>
+                </a>
+                <a class="nav-link" href="{{ url_for('auth.account') }}">
+                    👤 {{ logged_in_user.name }}
+                </a>
+                <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                    🚪 <span class="en">Logout</span><span class="ta">வெளியேறு</span>
+                </a>
+            {% else %}
+                <a class="nav-link" href="{{ url_for('auth.login') }}">🔐 Login</a>
+                <a class="nav-link" href="{{ url_for('auth.register') }}">📝 Register</a>
+            {% endif %}
+
+            <div class="lang-switch">
+                <button id="btnEn" class="lang-btn active" onclick="setLang('en')">EN</button>
+                <button id="btnTa" class="lang-btn" onclick="setLang('ta')">தமிழ்</button>
+            </div>
+        </nav>
+    </div>
+</header>
+
+<main class="container">
+
+    <section class="hero">
+        <h1>
+            🎯 <span class="en">Government Scheme Recommendation</span>
+            <span class="ta">அரசு நலத்திட்ட பரிந்துரை</span>
+        </h1>
+        <p class="en">
+            Discover Central and State welfare schemes, subsidies, educational scholarships, and financial assistance. Answer a few questions below to find matching programs.
+        </p>
+        <p class="ta">
+            மத்திய மற்றும் மாநில அரசு நலத்திட்டங்கள், மானியங்கள், கல்வி உதவித்தொகைகள் மற்றும் நிதி உதவிகளைக் கண்டறியுங்கள். உங்களுக்குப் பொருத்தமான திட்டங்களைக் காண கீழே உள்ள விவரங்களைப் பூர்த்தி செய்யுங்கள்.
+        </p>
+    </section>
+
+    <!-- STEP 1: USER PROFILE -->
+    <section class="card">
+        <h2>
+            1. <span class="en">Your Profile Details (Optional)</span>
+            <span class="ta">உங்கள் சுயவிவரம் (விருப்பத்தேர்வு)</span>
+        </h2>
+        <p class="profile-note">
+            <span class="en">These details help calibrate matches. You can leave fields blank if not applicable.</span>
+            <span class="ta">இந்தத் தகவல்கள் திட்டப் பொருத்தத்தை மேம்படுத்த உதவும். பொருந்தாத விவரங்களை காலியாக விடலாம்.</span>
+        </p>
+        <div class="grid" id="profile"></div>
+        <div class="field" style="margin-top:14px">
+            <label>
+                <span class="en">State / UT</span><span class="ta">மாநிலம் / யூனியன் பிரதேசம்</span>
+            </label>
+            <select id="state">
+                <option value="">Select state / UT (e.g. Tamil Nadu / Central)</option>
+                <option selected>Tamil Nadu</option>
+                <option>Andhra Pradesh</option>
+                <option>Assam</option>
+                <option>Bihar</option>
+                <option>Delhi</option>
+                <option>Gujarat</option>
+                <option>Karnataka</option>
+                <option>Kerala</option>
+                <option>Madhya Pradesh</option>
+                <option>Maharashtra</option>
+                <option>Punjab</option>
+                <option>Rajasthan</option>
+                <option>Telangana</option>
+                <option>Uttar Pradesh</option>
+                <option>West Bengal</option>
+                <option>Puducherry</option>
+            </select>
+        </div>
+    </section>
+
+    <!-- STEP 2: CATEGORY SELECTION -->
+    <section class="card">
+        <h2>
+            2. <span class="en">Choose Support Domain</span>
+            <span class="ta">உதவிப் பிரிவைத் தேர்வு செய்யவும்</span>
+        </h2>
+        <div class="category-grid" id="categories"></div>
+    </section>
+
+    <!-- STEP 3: DYNAMIC CATEGORY QUESTIONS & STATED NEED -->
+    <section class="card hidden" id="questionsCard">
+        <h2>
+            3. <span class="en">Assistance Needed & Category Questions</span>
+            <span class="ta">உதவித் தேவை மற்றும் பிரிவு சார்ந்த கேள்விகள்</span>
+        </h2>
+        
+        <div class="search-input-box">
+            <label style="display:block; font-weight:700; font-size:13.5px; margin-bottom:6px; color:#1e293b;">
+                <span class="en">Describe your specific need, equipment, subsidy, or scheme name (English / தமிழ்):</span>
+                <span class="ta">உங்களுக்குத் தேவையான குறிப்பிட்ட உதவி, மானியம் அல்லது உபகரணத்தை விவரிக்கவும் (தமிழ் / ஆங்கிலம்):</span>
+            </label>
+            <input type="text" id="statedNeed" placeholder="e.g. tractor purchase subsidy, girl child education scholarship, poultry farm loan, housing grant / எ.கா: டிராக்டர் மானியம், பெண் கல்வி உதவித்தொகை" />
+            <small style="display:block; color:var(--muted); font-size:12px; margin-top:6px;">
+                <span class="en">💡 Powered by Hybrid TF-IDF vectorization & Cosine Similarity matching against 4,670+ official welfare schemes.</span>
+                <span class="ta">💡 அரசு நலத்திட்டங்களுடன் TF-IDF மற்றும் கோசைன் ஒற்றுமை அடிப்படையில் துல்லியமாக ஒப்பிடுகிறது.</span>
+            </small>
+        </div>
+
+        <div id="questions"></div>
+        <button class="btn-search" id="findBtn" onclick="findSchemes()">
+            🔎 <span class="en">Find Matching Schemes</span><span class="ta">பொருத்தமான திட்டங்களை தேடு</span>
+        </button>
+    </section>
+
+    <!-- STEP 4: POSSIBLE MATCHES -->
+    <section class="card hidden" id="resultsCard">
+        <h2>
+            4. <span class="en">Matching Government Schemes</span>
+            <span class="ta">பொருத்தமான அரசு நலத்திட்டங்கள்</span>
+        </h2>
+        <div class="disclaimer-box">
+            <strong>⚠️ <span class="en">Disclaimer:</span><span class="ta">பொறுப்புத் துறப்பு:</span></strong>
+            <span class="en">Possible Match — Verify Official Eligibility. Preliminary matching only. Always verify current criteria, deadlines, and required documentation with the official issuing authority.</span>
+            <span class="ta">சாத்தியமான பொருத்தம் — அதிகாரப்பூர்வ தகுதியை சரிபார்க்கவும். அதிகாரப்பூர்வ அரசு தளத்தில் விதிகளை சரிபார்க்கவும்.</span>
+        </div>
+        <div id="results"></div>
+        <div id="compareBar" class="compare-bar hidden">
+            <span>⚖️ <b id="compareCount">0</b> <span class="en">schemes selected to compare</span><span class="ta">திட்டங்கள் தேர்வு செய்யப்பட்டுள்ளன</span></span>
+            <button onclick="compareSelected()">Compare Schemes</button>
+        </div>
+    </section>
+
+    <!-- STEP 5: SAVED SCHEMES -->
+    <section class="card">
+        <h2>
+            ⭐ <span class="en">Saved Schemes</span><span class="ta">சேமித்த திட்டங்கள்</span>
+        </h2>
+        <div id="savedResults"><p style="color:var(--muted); font-size:13.5px;">No schemes saved yet. Click "⭐ Save" on any matched scheme.</p></div>
+    </section>
+
+</main>
+
+<script>
+const categoryData = {{ categories|tojson }};
+const profileData = {{ profile_questions|tojson }};
+const icons = {
+    agriculture: '🌾', education: '🎓', women_child: '👩‍👧',
+    employment: '💼', business: '🏢', finance: '💰',
+    housing: '🏠', health: '🏥', senior: '👴', disability: '♿', other: '📋'
+};
+let selectedCategory = '';
+
+// Language switcher
+function setLang(l) {
+    if (l === 'ta') {
+        document.body.classList.add('ta-mode');
+        document.getElementById('btnTa').classList.add('active');
+        document.getElementById('btnEn').classList.remove('active');
+    } else {
+        document.body.classList.remove('ta-mode');
+        document.getElementById('btnEn').classList.add('active');
+        document.getElementById('btnTa').classList.remove('active');
+    }
+    localStorage.setItem('govease_lang', l);
+}
+setLang(localStorage.getItem('govease_lang') || 'en');
+
+// Render Profile
+function renderProfile() {
+    const box = document.getElementById('profile');
+    box.innerHTML = '';
+    profileData.forEach(q => {
+        const d = document.createElement('div');
+        d.className = 'field';
+        let control = '';
+        if (q.type === 'number') {
+            control = `<input id="p_${q.id}" type="number" min="1" max="120" placeholder="${q.placeholder||''}">`;
+        } else if (q.type === 'text') {
+            control = `<input id="p_${q.id}" type="text" placeholder="${q.placeholder||''}">`;
+        } else {
+            control = `<select id="p_${q.id}"><option value="">Select (optional)</option>${q.options.map(o => `<option value="${o[0]}">${o[1]} — ${o[2]}</option>`).join('')}</select>`;
+        }
+        d.innerHTML = `<label><span class="en">${q.en}</span><span class="ta">${q.ta}</span></label>${control}`;
+        box.appendChild(d);
+    });
+}
+
+// Render Categories
+function renderCategories() {
+    const box = document.getElementById('categories');
+    Object.entries(categoryData).forEach(([k, c]) => {
+        const b = document.createElement('button');
+        b.className = 'cat';
+        b.dataset.key = k;
+        b.innerHTML = `<span class="icon">${icons[k]||'📋'}</span><strong><span class="en">${c.en}</span><span class="ta">${c.ta}</span></strong><br><span class="small">${k.toUpperCase()}</span>`;
+        b.onclick = () => selectCategory(k);
+        box.appendChild(b);
+    });
+}
+
+// Select Category
+async function selectCategory(k) {
+    selectedCategory = k;
+    document.querySelectorAll('.cat').forEach(x => x.classList.toggle('selected', x.dataset.key === k));
+    const qc = document.getElementById('questionsCard');
+    qc.classList.remove('hidden');
+    const qBox = document.getElementById('questions');
+    qBox.innerHTML = '<div class="loading">Loading questions...</div>';
+
+    try {
+        const r = await fetch(`/schemes/api/questions/${k}`);
+        const d = await r.json();
+        renderQuestions(d.questions || []);
+        qc.scrollIntoView({ behavior: 'smooth' });
+    } catch(err) {
+        qBox.innerHTML = '<div class="error">Unable to load category questions. Please check server.</div>';
+    }
+}
+
+function renderQuestions(qs) {
+    const qBox = document.getElementById('questions');
+    qBox.innerHTML = '';
+    if (!qs.length) {
+        qBox.innerHTML = '<p style="color:var(--muted); font-size:13.5px;">No extra questions needed for this domain. Click "Find Matching Schemes" below.</p>';
+        return;
+    }
+    qs.forEach(q => {
+        const d = document.createElement('div');
+        d.className = 'question';
+        d.innerHTML = `<label><span class="en">${q.en}</span><span class="ta">${q.ta}</span></label><select data-question="${q.id}" id="q_${q.id}"><option value="">Select an answer</option>${q.options.map(o => `<option value="${o[0]}">${o[1]} — ${o[2]}</option>`).join('')}</select>`;
+        qBox.appendChild(d);
+    });
+}
+
+function collectAnswers() {
+    const a = {};
+    profileData.forEach(q => a[q.id] = document.getElementById('p_' + q.id)?.value || '');
+    a.state = document.getElementById('state').value;
+    document.querySelectorAll('#questions select').forEach(s => a[s.dataset.question] = s.value);
+    return a;
+}
+
+// Find Schemes
+async function findSchemes() {
+    if (!selectedCategory) {
+        alert('Please choose a support domain category.');
+        return;
+    }
+    const answers = collectAnswers();
+    const query = document.getElementById('statedNeed')?.value.trim() || '';
+    const btn = document.getElementById('findBtn');
+    btn.disabled = true;
+    btn.innerHTML = 'Searching schemes...';
+
+    const rc = document.getElementById('resultsCard');
+    const resBox = document.getElementById('results');
+
+    try {
+        const r = await fetch('/schemes/api/match', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category: selectedCategory, query: query, answers: answers })
+        });
+        const d = await r.json();
+        btn.disabled = false;
+        btn.innerHTML = '🔎 Find Matching Schemes';
+        rc.classList.remove('hidden');
+
+        if (!r.ok) {
+            resBox.innerHTML = `<div class="error">${e(d.error || 'Failed to search schemes.')}</div>`;
+            return;
+        }
+
+        if (!d.results || !d.results.length) {
+            resBox.innerHTML = '<div class="error">No specific matches found. Try modifying your query keywords or adjusting your profile filters.</div>';
+            return;
+        }
+
+        window.currentResults = d.results;
+        resBox.innerHTML = d.results.map((s, i) => {
+            let statusBadge = '';
+            if (s.eligibility_status === 'eligible') {
+                statusBadge = '<span class="status-badge status-eligible">✓ Verified Eligible Profile</span>';
+            } else if (s.eligibility_status === 'ineligible') {
+                statusBadge = '<span class="status-badge status-ineligible">✕ Ineligible on Mandatory Criteria</span>';
+            } else if (s.eligibility_status === 'insufficient_information') {
+                statusBadge = '<span class="status-badge status-insufficient_information">⚠️ Verification Needed</span>';
+            } else {
+                statusBadge = '<span class="status-badge status-potentially_eligible">ℹ️ Potentially Eligible</span>';
+            }
+
+            const breakdown = s.score_breakdown || {};
+
+            return `
+            <article class="result">
+                <div class="result-header">
+                    <div>
+                        <h3>${e(s.name)}</h3>
+                        <div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+                            ${statusBadge}
+                            ${s.state ? `<span class="badge">📍 ${e(s.state)}</span>` : '<span class="badge">🌐 All India / Central</span>'}
+                            ${s.department ? `<span class="badge">🏛️ ${e(s.department)}</span>` : ''}
+                        </div>
+                    </div>
+                    <span class="score-badge">${s.match_score}% Match</span>
+                </div>
+
+                <div class="progress"><span style="width:${Math.min(100, Math.max(0, s.match_score))}%"></span></div>
+
+                <div style="margin: 6px 0 10px;">
+                    <span class="score-pill">Need Alignment: <b>${Math.round(breakdown.content_similarity || 0)}%</b></span>
+                    <span class="score-pill">Category Match: <b>${Math.round(breakdown.category_match || 0)}%</b></span>
+                    <span class="score-pill">State Match: <b>${Math.round(breakdown.state_match || 0)}%</b></span>
+                    <span class="score-pill">Profile Match: <b>${Math.round(breakdown.profile_match || 0)}%</b></span>
+                </div>
+                ${s.score_explanation ? `<div style="font-size:12px; color:var(--muted); margin-bottom:10px;">📊 <em>${e(s.score_explanation)}</em></div>` : ''}
+
+                <p style="font-size:14px; color:#334155; margin-bottom:10px;">${e(s.description)}</p>
+
+                ${s.reasons?.length ? `
+                    <div style="margin:10px 0;">
+                        <strong style="font-size:13px; color:#166534;">✓ Why it matched / ஏன் பொருத்தம்:</strong>
+                        ${s.reasons.map(x => `<div class="reason">✓ ${e(x)}</div>`).join('')}
+                    </div>` : ''}
+
+                ${s.missing_verifications?.length ? `
+                    <div class="verification-card">
+                        <strong>⚠️ Missing Information to Verify / சரிபார்க்க வேண்டிய விவரங்கள்:</strong>
+                        <ul style="margin:4px 0 0; padding-left:18px; font-size:13px;">
+                            ${s.missing_verifications.map(x => `<li>${e(x)}</li>`).join('')}
+                        </ul>
+                    </div>` : ''}
+
+                ${s.benefits?.length ? `
+                    <div style="margin:8px 0;">
+                        <strong style="font-size:13px;">Benefits / நன்மைகள்:</strong>
+                        <ul style="margin:4px 0 8px; padding-left:20px; font-size:13.5px;">${s.benefits.map(x => `<li>${e(x)}</li>`).join('')}</ul>
+                    </div>` : ''}
+
+                ${s.eligibility?.length ? `
+                    <div style="margin:8px 0;">
+                        <strong style="font-size:13px;">Eligibility Rules / தகுதி:</strong>
+                        <ul style="margin:4px 0 8px; padding-left:20px; font-size:13.5px;">${s.eligibility.map(x => `<li>${e(x)}</li>`).join('')}</ul>
+                    </div>` : ''}
+
+                ${s.documents?.length ? `
+                    <div style="margin:8px 0;">
+                        <strong style="font-size:13px;">Required Documents / தேவையான ஆவணங்கள்:</strong>
+                        <ul style="margin:4px 0 8px; padding-left:20px; font-size:13.5px;">${s.documents.map(x => `<li>${e(x)}</li>`).join('')}</ul>
+                    </div>` : ''}
+
+                <div class="actions">
+                    <button class="mini" onclick="toggleCompare(${i})">⚖️ Compare</button>
+                    <button class="mini" onclick="toggleSave(${i})">⭐ Save</button>
+                    ${s.source_url ? `<a class="mini" href="${e(s.source_url)}" target="_blank" rel="noopener">🔗 Official Website</a>` : ''}
+                </div>
+            </article>
+            `;
+        }).join('');
+
+        updateCompareBar();
+        renderSaved();
+        rc.scrollIntoView({ behavior: 'smooth' });
+    } catch(err) {
+        btn.disabled = false;
+        btn.innerHTML = '🔎 Find Matching Schemes';
+        rc.classList.remove('hidden');
+        resBox.innerHTML = `<div class="error">Network error: ${err.message}</div>`;
+    }
+}
+
+function e(v) {
+    return String(v ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
+}
+
+// Compare Feature
+let compareItems = [];
+function updateCompareBar() {
+    const bar = document.getElementById('compareBar');
+    bar.classList.toggle('hidden', compareItems.length === 0);
+    document.getElementById('compareCount').textContent = compareItems.length;
+}
+
+function toggleCompare(i) {
+    const s = window.currentResults?.[i];
+    if (!s) return;
+    const at = compareItems.findIndex(x => x.name === s.name);
+    if (at >= 0) {
+        compareItems.splice(at, 1);
+    } else {
+        if (compareItems.length >= 3) {
+            alert('You can compare up to 3 schemes at a time.');
+            return;
+        }
+        compareItems.push(s);
+    }
+    updateCompareBar();
+}
+
+function compareSelected() {
+    if (compareItems.length < 2) {
+        alert('Select at least 2 schemes to compare.');
+        return;
+    }
+    const rows = ['Match Score', 'Eligibility Status', 'Relevance Breakdown', 'State', 'Department', 'Benefits', 'Eligibility', 'Documents', 'Application Mode'];
+    const body = rows.map(r => {
+        const vals = compareItems.map(s => {
+            let v = '';
+            if (r === 'Match Score') v = s.match_score + '%';
+            else if (r === 'Eligibility Status') v = (s.eligibility_status || 'potentially_eligible').replace(/_/g, ' ').toUpperCase();
+            else if (r === 'Relevance Breakdown') v = s.score_explanation || '';
+            else if (r === 'State') v = s.state;
+            else if (r === 'Department') v = s.department;
+            else if (r === 'Benefits') v = (s.benefits || []).join('<br>• ');
+            else if (r === 'Eligibility') v = (s.eligibility || []).join('<br>• ');
+            else if (r === 'Documents') v = (s.documents || []).join('<br>• ');
+            else if (r === 'Application Mode') v = s.application_mode;
+            return `<td>${e(v)}</td>`;
+        }).join('');
+        return `<tr><th>${e(r)}</th>${vals}</tr>`;
+    }).join('');
+
+    const modal = document.createElement('div');
+    modal.className = 'compare-modal';
+    modal.innerHTML = `
+        <div class="compare-box">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2>⚖️ Scheme Comparison</h2>
+                <button class="mini" onclick="this.closest('.compare-modal').remove()">✕ Close</button>
+            </div>
+            <table class="compare-table">
+                <tr><th>Scheme Name</th>${compareItems.map(s => `<th>${e(s.name)}</th>`).join('')}</tr>
+                ${body}
+            </table>
+            <p style="font-size:12px; color:var(--muted); margin-top:14px;">
+                Note: Comparison information is based on public portal records. Verify actual criteria on official portals.
+            </p>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// Saved Schemes Feature
+function getSaved() {
+    try { return JSON.parse(localStorage.getItem('govease_saved_schemes') || '[]'); }
+    catch { return []; }
+}
+function saveAll(a) { localStorage.setItem('govease_saved_schemes', JSON.stringify(a)); }
+
+function toggleSave(i) {
+    const s = window.currentResults?.[i];
+    if (!s) return;
+    let a = getSaved();
+    const at = a.findIndex(x => x.name === s.name);
+    if (at >= 0) a.splice(at, 1);
+    else a.push(s);
+    saveAll(a);
+    renderSaved();
+}
+
+function removeSaved(name) {
+    saveAll(getSaved().filter(x => x.name !== name));
+    renderSaved();
+}
+
+function renderSaved() {
+    const box = document.getElementById('savedResults');
+    const a = getSaved();
+    if (!a.length) {
+        box.innerHTML = '<p style="color:var(--muted); font-size:13.5px;">No schemes saved yet. Click "⭐ Save" on any scheme to store it here.</p>';
+        return;
+    }
+    box.innerHTML = a.map(s => `
+        <div class="saved-card">
+            <strong>${e(s.name)}</strong> — <span style="color:var(--primary); font-weight:700;">${s.match_score}% match</span><br>
+            <span class="small">${e(s.department || s.state || '')}</span>
+            <div class="actions" style="margin-top:6px;">
+                <button class="mini" onclick="removeSaved(${JSON.stringify(s.name)})">🗑️ Remove</button>
+                ${s.source_url ? `<a class="mini" href="${e(s.source_url)}" target="_blank" rel="noopener">🔗 Official Source</a>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+renderProfile();
+renderCategories();
+renderSaved();
+</script>
+
+</body>
+</html>

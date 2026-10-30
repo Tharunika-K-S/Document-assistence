@@ -1,0 +1,588 @@
+/* ============================================================
+   GovEase AI — Voice Assistant & Speech Controls Design System
+   Matches GovEase AI Navy/Primary theme. Fully responsive on desktop & mobile.
+============================================================ */
+
+/* ── Inline Speaker & Read Aloud Buttons ─────────────────── */
+.voice-read-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #eef2ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    line-height: 1.4;
+}
+
+.voice-read-btn:hover {
+    background: #e0e7ff;
+    color: #1e1b4b;
+    border-color: #a5b4fc;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);
+}
+
+.voice-read-btn.active {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4338ca;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    animation: voicePulse 1.8s infinite;
+}
+
+.voice-read-btn svg, .voice-read-btn .icon {
+    font-size: 14px;
+    display: inline-block;
+}
+
+@keyframes voicePulse {
+    0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.45); }
+    70% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+}
+
+/* ── Floating Sticky Audio Playback Bar ──────────────────── */
+.voice-audio-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120px);
+    background: #0f172a;
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 36px;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(255,255,255,0.08);
+    z-index: 9999;
+    backdrop-filter: blur(12px);
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+    max-width: 90vw;
+}
+
+.voice-audio-bar.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.voice-bar-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+    max-width: 260px;
+}
+
+.voice-bar-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.voice-bar-status {
+    font-size: 11px;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.voice-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    display: inline-block;
+}
+
+.voice-status-dot.speaking {
+    background: #3b82f6;
+    animation: dotPulse 1.2s infinite;
+}
+
+.voice-status-dot.paused {
+    background: #f59e0b;
+}
+
+@keyframes dotPulse {
+    0% { transform: scale(0.9); opacity: 0.6; }
+    50% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+.voice-bar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.voice-ctrl-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border: none;
+    color: #ffffff;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s ease;
+}
+
+.voice-ctrl-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.06);
+}
+
+.voice-ctrl-btn.primary {
+    background: #2563eb;
+    color: white;
+}
+
+.voice-ctrl-btn.primary:hover {
+    background: #1d4ed8;
+}
+
+.voice-ctrl-btn.stop:hover {
+    background: #ef4444;
+}
+
+.voice-bar-close {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    border-radius: 4px;
+}
+
+.voice-bar-close:hover {
+    color: #cbd5e1;
+}
+
+/* ── Floating Action Button (FAB) for Voice Assistant ─────── */
+.voice-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.4), 0 2px 6px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 9990;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.voice-fab:hover {
+    transform: scale(1.08) translateY(-2px);
+    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.5);
+}
+
+.voice-fab.listening {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+    animation: fabWave 1.4s infinite;
+}
+
+@keyframes fabWave {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+    70% { box-shadow: 0 0 0 18px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.voice-fab-badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    background: #10b981;
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 2px solid white;
+}
+
+/* ── Voice Assistant Modal / Drawer ──────────────────────── */
+.voice-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.voice-modal-backdrop.open {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+}
+
+.voice-modal {
+    background: #ffffff;
+    width: 95%;
+    max-width: 540px;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+    animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid #e2e8f0;
+}
+
+@keyframes modalIn {
+    from { transform: scale(0.94) translateY(12px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.voice-modal-header {
+    background: linear-gradient(135deg, #0a1128, #162f65);
+    color: white;
+    padding: 18px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.voice-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.voice-modal-header .lang-toggle-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 14px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.voice-modal-header .lang-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.voice-modal-close {
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px;
+}
+
+.voice-modal-close:hover {
+    color: white;
+}
+
+.voice-modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* ── Live Waveform & Status Container ────────────────────── */
+.voice-mic-status-box {
+    text-align: center;
+    padding: 20px 16px 12px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.voice-mic-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #e0e7ff;
+    color: #4338ca;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    cursor: pointer;
+    border: 3px solid #c7d2fe;
+    transition: all 0.25s ease;
+}
+
+.voice-mic-circle:hover {
+    transform: scale(1.05);
+    background: #c7d2fe;
+}
+
+.voice-mic-circle.listening {
+    background: #ef4444;
+    color: white;
+    border-color: #f87171;
+    animation: micActivePulse 1.3s infinite;
+}
+
+@keyframes micActivePulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+    70% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.voice-status-text {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.voice-status-sub {
+    font-size: 11.5px;
+    color: #64748b;
+    margin-top: -6px;
+}
+
+/* Waveform Bars */
+.voice-wave-bars {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+}
+
+.voice-wave-bar {
+    width: 3px;
+    background: #cbd5e1;
+    border-radius: 2px;
+    height: 6px;
+    transition: height 0.15s ease, background 0.2s ease;
+}
+
+.voice-mic-status-box.listening .voice-wave-bar {
+    background: #ef4444;
+    animation: waveBounce 0.8s infinite alternate;
+}
+
+.voice-mic-status-box.listening .voice-wave-bar:nth-child(1) { animation-delay: 0.1s; }
+.voice-mic-status-box.listening .voice-wave-bar:nth-child(2) { animation-delay: 0.25s; }
+.voice-mic-status-box.listening .voice-wave-bar:nth-child(3) { animation-delay: 0.4s; }
+.voice-mic-status-box.listening .voice-wave-bar:nth-child(4) { animation-delay: 0.15s; }
+.voice-mic-status-box.listening .voice-wave-bar:nth-child(5) { animation-delay: 0.3s; }
+
+@keyframes waveBounce {
+    0% { height: 4px; }
+    100% { height: 20px; }
+}
+
+/* ── Live Recognized Transcript Bubble ───────────────────── */
+.voice-transcript-box {
+    background: #eff6ff;
+    border-left: 4px solid #3b82f6;
+    border-radius: 0 12px 12px 0;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #1e3a8a;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+}
+
+.voice-transcript-box .interim {
+    opacity: 0.65;
+    font-style: italic;
+}
+
+/* ── Conversational Messages / History ───────────────────── */
+.voice-chat-history {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.voice-msg {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 88%;
+    word-break: break-word;
+}
+
+.voice-msg.user {
+    align-self: flex-end;
+    background: #2563eb;
+    color: white;
+    border-bottom-right-radius: 3px;
+}
+
+.voice-msg.assistant {
+    align-self: flex-start;
+    background: #f1f5f9;
+    color: #1e293b;
+    border-bottom-left-radius: 3px;
+    border: 1px solid #e2e8f0;
+}
+
+.voice-msg-actions {
+    margin-top: 6px;
+    display: flex;
+    gap: 8px;
+}
+
+/* ── Quick Question Suggestion Chips ─────────────────────── */
+.voice-chips-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.voice-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.voice-chip {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    padding: 5px 11px;
+    border-radius: 16px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.voice-chip:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+/* ── Fallback Input Footer ───────────────────────────────── */
+.voice-modal-footer {
+    padding: 14px 20px;
+    background: #ffffff;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.voice-text-input {
+    flex: 1;
+    padding: 9px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 20px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.voice-text-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.voice-send-btn {
+    background: #2563eb;
+    color: white;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 20px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.voice-send-btn:hover {
+    background: #1d4ed8;
+}
+
+/* ── Permission / Error Banner ───────────────────────────── */
+.voice-alert-banner {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 11.5px;
+    display: none;
+    align-items: center;
+    gap: 6px;
+}
+
+.voice-alert-banner.visible {
+    display: flex;
+}
+
+/* ── Mobile responsiveness ───────────────────────────────── */
+@media (max-width: 640px) {
+    .voice-fab {
+        bottom: 16px;
+        right: 16px;
+        width: 52px;
+        height: 52px;
+        font-size: 22px;
+    }
+    .voice-audio-bar {
+        bottom: 14px;
+        width: calc(100vw - 28px);
+        padding: 8px 14px;
+    }
+    .voice-modal {
+        max-height: 90vh;
+        width: 96%;
+    }
+}

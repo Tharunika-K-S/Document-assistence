@@ -334,6 +334,84 @@
             color: #166534;
         }
 
+        /* HYBRID RECOMMENDATION STATUS BADGES & SCORES */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 11px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .status-eligible {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+        }
+        .status-potentially_eligible {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+        .status-insufficient_information {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        .status-ineligible {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+        }
+
+        .score-pill {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 11.5px;
+            margin: 2px 4px 2px 0;
+            border: 1px solid #e2e8f0;
+        }
+        .score-pill b {
+            color: #0f172a;
+        }
+
+        .verification-card {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 10px 0;
+            font-size: 13px;
+            color: #92400e;
+        }
+
+        .search-input-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .search-input-box input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 14.5px;
+            outline: none;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+        .search-input-box input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+        }
+
         .actions {
             display: flex;
             gap: 8px;
@@ -437,7 +515,283 @@
         .ta { display: none; }
         .ta-mode .en { display: none !important; }
         .ta-mode .ta { display: inline !important; }
+
+        /* ============================================================
+           REQUIRED DOCUMENTS CHECKLIST STYLES
+        ============================================================ */
+        .checklist-section {
+            margin-top: 28px;
+            border: 2px solid #2563eb;
+            border-radius: 20px;
+            background: #ffffff;
+            box-shadow: 0 12px 32px rgba(37, 99, 235, 0.12);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .checklist-header {
+            background: linear-gradient(135deg, #0a1128 0%, #162f65 100%);
+            color: white;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .checklist-title-box h3 {
+            margin: 0 0 6px;
+            font-size: 20px;
+            font-weight: 800;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checklist-scheme-name {
+            font-size: 14.5px;
+            color: #bfdbfe;
+            font-weight: 600;
+        }
+
+        .checklist-banner-disclaimer {
+            background: #fffbeb;
+            border-bottom: 1px solid #fef3c7;
+            padding: 12px 24px;
+            font-size: 12.5px;
+            color: #92400e;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            line-height: 1.5;
+        }
+
+        .checklist-progress-card {
+            padding: 18px 24px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .checklist-progress-text {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .checklist-progress-bar-bg {
+            width: 240px;
+            max-width: 100%;
+            height: 12px;
+            background: #e2e8f0;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .checklist-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            border-radius: 20px;
+            transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .checklist-badge {
+            padding: 4px 12px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .checklist-badge.complete { background: #d1fae5; color: #065f46; }
+        .checklist-badge.in-progress { background: #dbeafe; color: #1e40af; }
+        .checklist-badge.pending { background: #fef3c7; color: #92400e; }
+
+        .checklist-items-container {
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .checklist-item {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            transition: all 0.2s ease;
+        }
+
+        .checklist-item:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .checklist-item.status-ready {
+            border-left: 6px solid #10b981;
+            background: #f0fdf4;
+        }
+
+        .checklist-item.status-pending {
+            border-left: 6px solid #f59e0b;
+            background: #fffdf5;
+        }
+
+        .checklist-item.status-na {
+            border-left: 6px solid #94a3b8;
+            background: #f8fafc;
+            opacity: 0.75;
+        }
+
+        .checklist-doc-info {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            flex: 1;
+            min-width: 240px;
+        }
+
+        .checklist-checkbox {
+            width: 20px;
+            height: 20px;
+            margin-top: 3px;
+            cursor: pointer;
+            accent-color: #10b981;
+        }
+
+        .checklist-doc-name {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 3px;
+            display: block;
+            cursor: pointer;
+        }
+
+        .checklist-doc-expl {
+            font-size: 12.5px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        .checklist-status-group {
+            display: flex;
+            gap: 6px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 20px;
+            user-select: none;
+        }
+
+        .checklist-status-btn {
+            padding: 5px 12px;
+            border-radius: 16px;
+            border: none;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            background: transparent;
+            color: #64748b;
+            transition: all 0.15s ease;
+        }
+
+        .checklist-status-btn:hover {
+            color: #1e293b;
+        }
+
+        .checklist-status-btn.active.ready {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+        }
+
+        .checklist-status-btn.active.pending {
+            background: #f59e0b;
+            color: white;
+            box-shadow: 0 1px 4px rgba(245, 158, 11, 0.3);
+        }
+
+        .checklist-status-btn.active.na {
+            background: #64748b;
+            color: white;
+            box-shadow: 0 1px 4px rgba(100, 116, 139, 0.3);
+        }
+
+        .checklist-empty-notice {
+            padding: 36px 24px;
+            text-align: center;
+            background: #fffdf5;
+            border-radius: 12px;
+            border: 1px dashed #fcd34d;
+            margin: 20px 24px;
+        }
+
+        .checklist-footer {
+            padding: 16px 24px;
+            background: #f8fafc;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .btn-official-source {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #2563eb;
+            color: white !important;
+            text-decoration: none;
+            padding: 7px 16px;
+            border-radius: 10px;
+            font-size: 12.5px;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .btn-official-source:hover {
+            background: #1d4ed8;
+            color: white !important;
+            transform: translateY(-1px);
+        }
+
+        .btn-checklist {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-checklist:hover {
+            background: #dcfce7;
+            color: #14532d;
+            border-color: #86efac;
+            transform: translateY(-1px);
+        }
+
     </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='voice_assistant.css') }}">
 </head>
 <body>
 
@@ -549,12 +903,30 @@
         <div class="category-grid" id="categories"></div>
     </section>
 
-    <!-- STEP 3: DYNAMIC CATEGORY QUESTIONS -->
+    <!-- STEP 3: DYNAMIC CATEGORY QUESTIONS & STATED NEED -->
     <section class="card hidden" id="questionsCard">
         <h2>
-            3. <span class="en">Category-Specific Questions</span>
-            <span class="ta">இந்தப் பிரிவுக்கான குறிப்பிட்ட கேள்விகள்</span>
+            3. <span class="en">Assistance Needed & Category Questions</span>
+            <span class="ta">உதவித் தேவை மற்றும் பிரிவு சார்ந்த கேள்விகள்</span>
         </h2>
+        
+        <div class="search-input-box">
+            <label style="display:block; font-weight:700; font-size:13.5px; margin-bottom:6px; color:#1e293b;">
+                <span class="en">Describe your specific need, equipment, subsidy, or scheme name (English / தமிழ்):</span>
+                <span class="ta">உங்களுக்குத் தேவையான குறிப்பிட்ட உதவி, மானியம் அல்லது உபகரணத்தை விவரிக்கவும் (தமிழ் / ஆங்கிலம்):</span>
+            </label>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="statedNeed" style="flex:1;" placeholder="e.g. tractor purchase subsidy, girl child education scholarship, poultry farm loan, housing grant / எ.கா: டிராக்டர் மானியம், பெண் கல்வி உதவித்தொகை" />
+                <button type="button" class="voice-read-btn" onclick="window.GovEaseVoice.startListening()" title="Speak your requirement aloud" style="padding:10px 14px; font-size:13px; border-radius:10px; white-space:nowrap; background:#e0e7ff; color:#3730a3; border-color:#a5b4fc;">
+                    🎙️ <span class="en">Speak Need</span><span class="ta">பேசுக</span>
+                </button>
+            </div>
+            <small style="display:block; color:var(--muted); font-size:12px; margin-top:6px;">
+                <span class="en">💡 Powered by Hybrid TF-IDF vectorization & Cosine Similarity matching against 4,670+ official welfare schemes.</span>
+                <span class="ta">💡 அரசு நலத்திட்டங்களுடன் TF-IDF மற்றும் கோசைன் ஒற்றுமை அடிப்படையில் துல்லியமாக ஒப்பிடுகிறது.</span>
+            </small>
+        </div>
+
         <div id="questions"></div>
         <button class="btn-search" id="findBtn" onclick="findSchemes()">
             🔎 <span class="en">Find Matching Schemes</span><span class="ta">பொருத்தமான திட்டங்களை தேடு</span>
@@ -696,6 +1068,7 @@ async function findSchemes() {
         return;
     }
     const answers = collectAnswers();
+    const query = document.getElementById('statedNeed')?.value.trim() || '';
     const btn = document.getElementById('findBtn');
     btn.disabled = true;
     btn.innerHTML = 'Searching schemes...';
@@ -707,7 +1080,7 @@ async function findSchemes() {
         const r = await fetch('/schemes/api/match', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ category: selectedCategory, answers })
+            body: JSON.stringify({ category: selectedCategory, query: query, answers: answers })
         });
         const d = await r.json();
         btn.disabled = false;
@@ -720,29 +1093,68 @@ async function findSchemes() {
         }
 
         if (!d.results || !d.results.length) {
-            resBox.innerHTML = '<div class="error">No specific matches found. Try another category or adjust your profile filters.</div>';
+            resBox.innerHTML = '<div class="error">No specific matches found. Try modifying your query keywords or adjusting your profile filters.</div>';
             return;
         }
 
         window.currentResults = d.results;
-        resBox.innerHTML = d.results.map((s, i) => `
+        resBox.innerHTML = d.results.map((s, i) => {
+            let statusBadge = '';
+            if (s.eligibility_status === 'eligible') {
+                statusBadge = '<span class="status-badge status-eligible">✓ Verified Eligible Profile</span>';
+            } else if (s.eligibility_status === 'ineligible') {
+                statusBadge = '<span class="status-badge status-ineligible">✕ Ineligible on Mandatory Criteria</span>';
+            } else if (s.eligibility_status === 'insufficient_information') {
+                statusBadge = '<span class="status-badge status-insufficient_information">⚠️ Verification Needed</span>';
+            } else {
+                statusBadge = '<span class="status-badge status-potentially_eligible">ℹ️ Potentially Eligible</span>';
+            }
+
+            const breakdown = s.score_breakdown || {};
+
+            return `
             <article class="result">
                 <div class="result-header">
                     <div>
                         <h3>${e(s.name)}</h3>
-                        <span class="badge possible-match">Possible Match — Verify Official Eligibility</span>
-                        ${s.state ? `<span class="badge">${e(s.state)}</span>` : ''}
-                        ${s.department ? `<span class="badge">${e(s.department)}</span>` : ''}
+                        <div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+                            ${statusBadge}
+                            ${s.state ? `<span class="badge">📍 ${e(s.state)}</span>` : '<span class="badge">🌐 All India / Central</span>'}
+                            ${s.department ? `<span class="badge">🏛️ ${e(s.department)}</span>` : ''}
+                        </div>
                     </div>
-                    <span class="score-badge">${s.match_score}% Match</span>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+                        <span class="score-badge">${s.match_score}% Match</span>
+                        <button type="button" class="voice-read-btn" onclick="window.GovEaseVoice.readSchemeCard(${i}, this)" title="Listen to scheme details" style="padding:3px 10px; font-size:11.5px;">
+                            🔊 <span class="en">Listen</span><span class="ta">கேள்</span>
+                        </button>
+                    </div>
                 </div>
+
                 <div class="progress"><span style="width:${Math.min(100, Math.max(0, s.match_score))}%"></span></div>
+
+                <div style="margin: 6px 0 10px;">
+                    <span class="score-pill">Need Alignment: <b>${Math.round(breakdown.content_similarity || 0)}%</b></span>
+                    <span class="score-pill">Category Match: <b>${Math.round(breakdown.category_match || 0)}%</b></span>
+                    <span class="score-pill">State Match: <b>${Math.round(breakdown.state_match || 0)}%</b></span>
+                    <span class="score-pill">Profile Match: <b>${Math.round(breakdown.profile_match || 0)}%</b></span>
+                </div>
+                ${s.score_explanation ? `<div style="font-size:12px; color:var(--muted); margin-bottom:10px;">📊 <em>${e(s.score_explanation)}</em></div>` : ''}
+
                 <p style="font-size:14px; color:#334155; margin-bottom:10px;">${e(s.description)}</p>
 
                 ${s.reasons?.length ? `
                     <div style="margin:10px 0;">
                         <strong style="font-size:13px; color:#166534;">✓ Why it matched / ஏன் பொருத்தம்:</strong>
                         ${s.reasons.map(x => `<div class="reason">✓ ${e(x)}</div>`).join('')}
+                    </div>` : ''}
+
+                ${s.missing_verifications?.length ? `
+                    <div class="verification-card">
+                        <strong>⚠️ Missing Information to Verify / சரிபார்க்க வேண்டிய விவரங்கள்:</strong>
+                        <ul style="margin:4px 0 0; padding-left:18px; font-size:13px;">
+                            ${s.missing_verifications.map(x => `<li>${e(x)}</li>`).join('')}
+                        </ul>
                     </div>` : ''}
 
                 ${s.benefits?.length ? `
@@ -764,12 +1176,16 @@ async function findSchemes() {
                     </div>` : ''}
 
                 <div class="actions">
+                    <button type="button" class="btn-checklist" onclick="openDocumentChecklist(${i})">
+                        📋 <span class="en">Required Documents Checklist</span><span class="ta">ஆவண சரிபார்ப்பு</span>
+                    </button>
                     <button class="mini" onclick="toggleCompare(${i})">⚖️ Compare</button>
                     <button class="mini" onclick="toggleSave(${i})">⭐ Save</button>
                     ${s.source_url ? `<a class="mini" href="${e(s.source_url)}" target="_blank" rel="noopener">🔗 Official Website</a>` : ''}
                 </div>
             </article>
-        `).join('');
+            `;
+        }).join('');
 
         updateCompareBar();
         renderSaved();
@@ -815,11 +1231,13 @@ function compareSelected() {
         alert('Select at least 2 schemes to compare.');
         return;
     }
-    const rows = ['Match Score', 'State', 'Department', 'Benefits', 'Eligibility', 'Documents', 'Application Mode'];
+    const rows = ['Match Score', 'Eligibility Status', 'Relevance Breakdown', 'State', 'Department', 'Benefits', 'Eligibility', 'Documents', 'Application Mode'];
     const body = rows.map(r => {
         const vals = compareItems.map(s => {
             let v = '';
             if (r === 'Match Score') v = s.match_score + '%';
+            else if (r === 'Eligibility Status') v = (s.eligibility_status || 'potentially_eligible').replace(/_/g, ' ').toUpperCase();
+            else if (r === 'Relevance Breakdown') v = s.score_explanation || '';
             else if (r === 'State') v = s.state;
             else if (r === 'Department') v = s.department;
             else if (r === 'Benefits') v = (s.benefits || []).join('<br>• ');
@@ -896,7 +1314,223 @@ function renderSaved() {
 renderProfile();
 renderCategories();
 renderSaved();
+
+// ============================================================
+// REQUIRED DOCUMENTS CHECKLIST ENGINE
+// ============================================================
+let activeChecklistScheme = null;
+let activeChecklistIndex = null;
+
+function openDocumentChecklist(index) {
+    if (!window.currentResults || !window.currentResults[index]) return;
+    activeChecklistIndex = index;
+    activeChecklistScheme = window.currentResults[index];
+    renderDocumentChecklist();
+    const section = document.getElementById('checklistSection');
+    if (section) {
+        section.classList.remove('hidden');
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function getStoredChecklistState(schemeName) {
+    try {
+        const key = 'govease_checklist_' + encodeURIComponent(schemeName);
+        const stored = localStorage.getItem(key);
+        return stored ? JSON.parse(stored) : {};
+    } catch(e) {
+        return {};
+    }
+}
+
+function saveChecklistState(schemeName, state) {
+    try {
+        const key = 'govease_checklist_' + encodeURIComponent(schemeName);
+        localStorage.setItem(key, JSON.stringify(state));
+    } catch(e) {}
+}
+
+function renderDocumentChecklist() {
+    const s = activeChecklistScheme;
+    if (!s) return;
+    const section = document.getElementById('checklistSection');
+    if (!section) return;
+
+    const chk = s.documents_checklist || { has_documents: false, items: [], notice: "Requirements not available—please verify with the official scheme source." };
+    const savedStates = getStoredChecklistState(s.name);
+
+    let html = `
+    <div class="checklist-header">
+        <div class="checklist-title-box">
+            <h3>📋 <span class="en">Required Documents Checklist</span><span class="ta">தேவையான ஆவணங்கள் சரிபார்ப்பு பட்டியல்</span></h3>
+            <div class="checklist-scheme-name">🎯 ${e(s.name)} ${s.state ? `(${e(s.state)})` : ''}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+            ${s.source_url ? `<a href="${e(s.source_url)}" target="_blank" rel="noopener noreferrer" class="btn-official-source">🔗 <span class="en">View Official Source</span><span class="ta">அதிகாரப்பூர்வ தளம்</span></a>` : ''}
+            <button type="button" class="mini" onclick="closeDocumentChecklist()" style="color:white; border-color:rgba(255,255,255,0.4);">✕ Close</button>
+        </div>
+    </div>
+
+    <div class="checklist-banner-disclaimer">
+        <span style="font-size:18px;">⚠️</span>
+        <div>
+            <strong>Important Preparation Aid:</strong>
+            <span class="en"> This checklist is a preparation aid to help you organize necessary records. It does not constitute official confirmation of eligibility. Always verify final requirements with the official scheme authority.</span>
+            <span class="ta"> இந்த சரிபார்ப்புப் பட்டியல் நீங்கள் ஆவணங்களைத் தயார் செய்ய உதவும் வழிகாட்டி மட்டுமே; தகுதிக்கான அதிகாரப்பூர்வ உறுதிப்படுத்தல் அல்ல. அதிகாரப்பூர்வ அரசுத் துறையிடம் நிபந்தனைகளை உறுதிப்படுத்தவும்.</span>
+        </div>
+    </div>
+    `;
+
+    if (!chk.has_documents || !chk.items || chk.items.length === 0) {
+        html += `
+        <div class="checklist-empty-notice">
+            <div style="font-size:32px; margin-bottom:8px;">ℹ️</div>
+            <h4 style="margin:0 0 6px; font-size:16px; color:#92400e;">
+                <span class="en">Requirements not available—please verify with the official scheme source.</span>
+                <span class="ta">தேவையான ஆவணங்களின் விவரங்கள் கிடைக்கவில்லை—அதிகாரப்பூர்வ அரசுத் தளத்தில் சரிபார்க்கவும்.</span>
+            </h4>
+            <p style="margin:0 0 16px; font-size:13px; color:#b45309;">
+                The central database does not list specific document requirements for this initiative. Please consult the official department portal or local office.
+            </p>
+            ${s.source_url ? `<a href="${e(s.source_url)}" target="_blank" rel="noopener noreferrer" class="btn-official-source" style="background:#b45309;">🔗 View Official Scheme Website</a>` : ''}
+        </div>
+        <div class="checklist-footer">
+            <button type="button" class="mini" onclick="closeDocumentChecklist()">← Back to Recommended Schemes</button>
+        </div>
+        `;
+        section.innerHTML = html;
+        return;
+    }
+
+    // Compute progress
+    let readyCount = 0;
+    let applicableCount = 0;
+
+    chk.items.forEach(doc => {
+        const st = savedStates[doc.id] || 'pending';
+        if (st !== 'na') applicableCount++;
+        if (st === 'ready') readyCount++;
+    });
+
+    const percent = applicableCount > 0 ? Math.round((readyCount / applicableCount) * 100) : 0;
+    let badgeClass = 'pending';
+    let badgeText = 'Pending Action';
+    if (percent === 100 && applicableCount > 0) {
+        badgeClass = 'complete';
+        badgeText = 'All Documents Ready ✓';
+    } else if (percent > 0) {
+        badgeClass = 'in-progress';
+        badgeText = 'In Progress';
+    }
+
+    html += `
+    <div class="checklist-progress-card">
+        <div>
+            <div class="checklist-progress-text">
+                <span class="en">Readiness Status: </span>
+                <span class="ta">ஆவணங்கள் தயார் நிலை: </span>
+                <b>${readyCount} of ${applicableCount}</b> documents ready (${percent}%)
+            </div>
+            <div class="checklist-progress-bar-bg">
+                <div class="checklist-progress-fill" style="width: ${percent}%;"></div>
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span class="checklist-badge ${badgeClass}">${badgeText}</span>
+            <button type="button" class="mini" onclick="markAllDocsReady(${activeChecklistIndex})" style="font-size:11.5px;">✓ Mark All Ready</button>
+            <button type="button" class="mini" onclick="resetDocsChecklist(${activeChecklistIndex})" style="font-size:11.5px;">↺ Reset</button>
+        </div>
+    </div>
+
+    <div class="checklist-items-container">
+    `;
+
+    chk.items.forEach((doc, dIdx) => {
+        const st = savedStates[doc.id] || 'pending';
+        const isReady = (st === 'ready');
+        const isPending = (st === 'pending');
+        const isNa = (st === 'na');
+
+        html += `
+        <div class="checklist-item status-${st}" id="chkItem_${doc.id}">
+            <div class="checklist-doc-info">
+                <input type="checkbox" class="checklist-checkbox" id="chkBox_${doc.id}" ${isReady ? 'checked' : ''} onchange="toggleDocCheckbox(${activeChecklistIndex}, '${doc.id}')" title="Check if ready" />
+                <div>
+                    <label class="checklist-doc-name" for="chkBox_${doc.id}" style="${isNa ? 'text-decoration: line-through; color: #94a3b8;' : ''}">${e(doc.name)}</label>
+                    <div class="checklist-doc-expl">${e(doc.explanation)}</div>
+                </div>
+            </div>
+            <div class="checklist-status-group">
+                <button type="button" class="checklist-status-btn ready ${isReady ? 'active' : ''}" onclick="setDocStatus(${activeChecklistIndex}, '${doc.id}', 'ready')">✓ Ready</button>
+                <button type="button" class="checklist-status-btn pending ${isPending ? 'active' : ''}" onclick="setDocStatus(${activeChecklistIndex}, '${doc.id}', 'pending')">⏳ Pending</button>
+                <button type="button" class="checklist-status-btn na ${isNa ? 'active' : ''}" onclick="setDocStatus(${activeChecklistIndex}, '${doc.id}', 'na')">— N/A</button>
+            </div>
+        </div>
+        `;
+    });
+
+    html += `
+    </div>
+    <div class="checklist-footer">
+        <div style="font-size:12px; color:var(--muted);">
+            💡 Progress is automatically saved locally. You can close and return anytime.
+        </div>
+        <div style="display:flex; gap:8px;">
+            ${s.source_url ? `<a href="${e(s.source_url)}" target="_blank" rel="noopener noreferrer" class="btn-official-source">🔗 Official Portal</a>` : ''}
+            <button type="button" class="mini" onclick="closeDocumentChecklist()">← Back to Results</button>
+        </div>
+    </div>
+    `;
+
+    section.innerHTML = html;
+}
+
+function setDocStatus(schemeIndex, docId, status) {
+    if (!window.currentResults || !window.currentResults[schemeIndex]) return;
+    const s = window.currentResults[schemeIndex];
+    const states = getStoredChecklistState(s.name);
+    states[docId] = status;
+    saveChecklistState(s.name, states);
+    renderDocumentChecklist();
+}
+
+function toggleDocCheckbox(schemeIndex, docId) {
+    if (!window.currentResults || !window.currentResults[schemeIndex]) return;
+    const s = window.currentResults[schemeIndex];
+    const states = getStoredChecklistState(s.name);
+    const current = states[docId] || 'pending';
+    states[docId] = (current === 'ready') ? 'pending' : 'ready';
+    saveChecklistState(s.name, states);
+    renderDocumentChecklist();
+}
+
+function markAllDocsReady(schemeIndex) {
+    if (!window.currentResults || !window.currentResults[schemeIndex]) return;
+    const s = window.currentResults[schemeIndex];
+    const chk = s.documents_checklist;
+    if (!chk || !chk.items) return;
+    const states = {};
+    chk.items.forEach(doc => { states[doc.id] = 'ready'; });
+    saveChecklistState(s.name, states);
+    renderDocumentChecklist();
+}
+
+function resetDocsChecklist(schemeIndex) {
+    if (!window.currentResults || !window.currentResults[schemeIndex]) return;
+    const s = window.currentResults[schemeIndex];
+    saveChecklistState(s.name, {});
+    renderDocumentChecklist();
+}
+
+function closeDocumentChecklist() {
+    const section = document.getElementById('checklistSection');
+    if (section) section.classList.add('hidden');
+    const resCard = document.getElementById('resultsCard');
+    if (resCard) resCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 </script>
 
+    <script src="{{ url_for('static', filename='voice_assistant.js') }}"></script>
 </body>
 </html>

@@ -1,7 +1,22 @@
+"""
+GovEase AI - Advanced Hybrid Government Scheme Recommendation Engine
+Combines:
+1. Multi-parameter Mandatory Eligibility Filtering (State, Gender, Age, Income, Community)
+2. Scikit-learn TF-IDF Vectorization over Scheme Descriptions, Benefits, and Requirements
+3. Cosine Similarity for Content-Based Need Alignment (Bilingual English & Tamil)
+4. Configurable Weighted Multi-Criteria Ranking with Explainable Relevance Scores
+"""
+
 import csv
+import logging
 import os
 import re
 from flask import Blueprint, jsonify, render_template, request
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+logger = logging.getLogger("govease.schemes")
+logger.setLevel(logging.INFO)
 
 scheme_bp = Blueprint("scheme_recommendation", __name__, url_prefix="/schemes")
 
@@ -14,8 +29,142 @@ SCHEME_FILE_CANDIDATES = [
     "schemes.csv(1).csv",
 ]
 
+# In-memory caches for fast sub-50ms query evaluation
 _SCHEMES_CACHE = None
+_SCHEMES_TFIDF_VECTORIZER = None
+_SCHEMES_TFIDF_MATRIX = None
 
+
+# ============================================================
+# CONFIGURABLE HYBRID RANKING WEIGHTS
+# ============================================================
+# These weights govern the hybrid scoring combination:
+# - content_similarity (40%): Semantic TF-IDF cosine similarity between user stated needs and scheme content
+# - category_match (25%): Domain alignment with user's selected support area
+# - state_match (15%): Jurisdiction alignment (state-specific vs central pan-India access)
+# - profile_match (20%): Demographic alignment (occupation, community, gender, custom criteria)
+DEFAULT_WEIGHTS = {
+    "content_similarity": 0.40,
+    "category_match": 0.25,
+    "state_match": 0.15,
+    "profile_match": 0.20,
+}
+
+WEIGHT_DESCRIPTIONS = {
+    "content_similarity": "Measures semantic relevance between user needs/keywords and official scheme descriptions, benefits, and eligibility text via TF-IDF cosine similarity.",
+    "category_match": "Ensures schemes directly classified under the user's selected government support category receive primary priority.",
+    "state_match": "Evaluates geographical eligibility, rewarding schemes matching the user's state or pan-India central initiatives.",
+    "profile_match": "Evaluates user demographic alignment including occupation, community, gender, and specific category answers.",
+}
+
+
+# ============================================================
+# BILINGUAL TAMIL-ENGLISH SEMANTIC DICTIONARY
+# ============================================================
+# Maps common Tamil administrative, welfare, occupational, and benefit terms
+# to English conceptual tokens to enable high-recall TF-IDF vectorization against
+# official government scheme records.
+TAMIL_ENGLISH_KEYWORDS = {
+    # Agriculture & Rural
+    "விவசாயம்": "agriculture farming crop harvest",
+    "விவசாயி": "farmer agricultural cultivator peasant",
+    "விவசாயிகள்": "farmers agriculturists cultivators",
+    "பயிர்": "crop harvest produce grain",
+    "தோட்டம்": "horticulture garden plantation",
+    "தோட்டக்கலை": "horticulture vegetables fruits",
+    "பால்": "dairy milk bovine cattle livestock",
+    "கால்நடை": "livestock cattle cow goat sheep animal husbandry",
+    "மீன்": "fisheries fish aquaculture pond marine",
+    "மீன்வளம்": "fisheries marine fishermen aquaculture",
+    "உழவர்": "farmer cultivator agriculturist",
+    "உரம்": "fertilizer organic nutrients compost",
+    "பாசனம்": "irrigation water pump borewell drip sprinkler",
+    "டிராக்டர்": "tractor farm machinery implements equipment mechanization",
+    "மானிய": "subsidy assistance grant concession financial aid",
+    "மானியம்": "subsidy grant financial assistance incentive",
+
+    # Education & Students
+    "கல்வி": "education learning schooling scholarship study",
+    "பள்ளி": "school student pre-matric elementary secondary",
+    "கல்லூரி": "college university higher education institute",
+    "மாணவர்": "student pupil scholar candidate learner",
+    "மாணவர்கள்": "students candidates youth scholars",
+    "மாணவி": "girl student female student",
+    "உதவித்தொகை": "scholarship stipend financial assistance grant",
+    "பட்டதாரி": "graduate degree ug pg higher education",
+    "முதல் பட்டதாரி": "first graduate scholarship higher education tuition fee waiver",
+    "படிப்பு": "studies course degree diploma technical vocational",
+    "பயிற்சி": "training vocational skill development practical",
+    "விடுதி": "hostel accommodation boarding welfare residential",
+
+    # Women & Child Welfare
+    "பெண்": "women woman female girl ladies",
+    "பெண்கள்": "women female ladies mothers",
+    "மகளிர்": "women female women empowerment self help group shg",
+    "சிறுமி": "girl child adolescent young girl",
+    "தாய்": "mother maternal maternity parent",
+    "கர்ப்பிணி": "pregnant maternity prenatal antenatal lactating",
+    "குழந்தை": "child infant pediatric nutrition anganwadi baby",
+    "குழந்தைகள்": "children infants toddlers",
+    "விதவை": "widow destitute deserted woman single mother",
+    "திருமணம்": "marriage wedding nuptial financial assistance mangalyam",
+    "தையல்": "tailoring sewing machine self employment women",
+
+    # Health & Wellness
+    "மருத்துவம்": "medical health hospital healthcare treatment clinic",
+    "சுகாதாரம்": "health hygiene wellness sanitization sanitation",
+    "காப்பீடு": "insurance policy health cover mediclaim ayushman",
+    "சிகிச்சை": "treatment clinical therapy surgery hospitalization inpatient",
+    "மருந்து": "medicine pharmaceutical drugs dispensary pharmacy",
+    "அறுவை": "surgery operation medical procedure hospital",
+
+    # Employment, Business & Finance
+    "வேலை": "job employment work vacancy livelihood recruitment",
+    "வேலைவாய்ப்பு": "employment recruitment placement job livelihood career",
+    "தொழில்": "business entrepreneur enterprise trade startup msme industry",
+    "சுயதொழில்": "self employment micro enterprise cottage industry small business",
+    "திறன்": "skill development vocational practical training competence",
+    "கடன்": "loan credit advance mudra collateral finance microfinance",
+    "வங்கி": "bank banking financial institution credit cooperative",
+    "நிதியுதவி": "financial assistance grant relief allowance subsidy",
+    "ஓய்வூதியம்": "pension monthly allowance old age retirement social security",
+
+    # Housing & Social Welfare
+    "வீடு": "housing shelter home residence pradhan mantri awas construction",
+    "குடியிருப்பு": "housing residential dwelling flat patta colony",
+    "நிலம்": "land agricultural plot property patta chitta revenue",
+    "பட்டா": "patta land ownership title record revenue landholding",
+    "முதியோர்": "senior citizen elderly old age aged 60 pension geriatric",
+    "மாற்றுத்திறனாளி": "disabled disability divyang differently abled assistive aids prosthesis",
+    "சமூகம்": "community social welfare empowerment sc st obc minority",
+    "வருமானம்": "income annual salary earnings bpl low income revenue",
+    "வறுமை": "poverty bpl economically weaker section ews destitute",
+    "சான்றிதழ்": "certificate document proof revenue department verification",
+}
+
+
+def expand_bilingual_query(text):
+    """
+    Normalizes query text and injects conceptual English equivalents for
+    Tamil terms so the TF-IDF vectorizer captures semantic relevance.
+    """
+    if not text:
+        return ""
+    cleaned = str(text).strip()
+    expansions = []
+    cleaned_lower = cleaned.lower()
+    for ta_term, en_tokens in TAMIL_ENGLISH_KEYWORDS.items():
+        if ta_term in cleaned_lower:
+            expansions.append(en_tokens)
+
+    if expansions:
+        return f"{cleaned} {' '.join(expansions)}"
+    return cleaned
+
+
+# ============================================================
+# SCHEME DATASET LOADING & TF-IDF INDEXING
+# ============================================================
 
 def find_scheme_file():
     for filename in SCHEME_FILE_CANDIDATES:
@@ -32,13 +181,14 @@ def find_scheme_file():
 
 
 def load_schemes():
-    """Load scheme database with in-memory caching to avoid disk latency."""
+    """Load scheme database with in-memory caching."""
     global _SCHEMES_CACHE
     if _SCHEMES_CACHE is not None:
         return _SCHEMES_CACHE
 
     path = find_scheme_file()
     if not path:
+        logger.error("No government scheme dataset file found in %s", BASE_DIR)
         return []
 
     try:
@@ -48,73 +198,414 @@ def load_schemes():
             for row in reader:
                 rows.append({(k or "").strip(): (v or "").strip() for k, v in row.items()})
             _SCHEMES_CACHE = rows
+            logger.info("Loaded %d government schemes from %s", len(_SCHEMES_CACHE), path)
             return _SCHEMES_CACHE
     except Exception as e:
-        print("Error loading schemes file:", e)
+        logger.error("Error loading scheme dataset: %s", str(e))
         return []
 
 
-def split_values(value):
-    if not value:
-        return []
-    return [x.strip() for x in re.split(r"[;|,]", str(value)) if x.strip()]
+def build_scheme_search_corpus(rows):
+    """
+    Constructs a rich searchable text representation for each scheme.
+    Scheme title, categories, and target beneficiaries receive boosted emphasis.
+    """
+    corpus = []
+    for r in rows:
+        name = r.get("scheme_name", "")
+        short_title = r.get("short_title", "")
+        cats = r.get("categories", "")
+        sub_cats = r.get("sub_categories", "")
+        tags = r.get("tags", "")
+        beneficiaries = r.get("target_beneficiaries", "")
+        brief_desc = r.get("brief_description", "")
+        det_desc = r.get("detailed_description", "")
+        benefits = r.get("benefits", "")
+        eligibility = r.get("eligibility", "")
+        docs = r.get("documents_required", "")
 
+        # Weighted composite representation
+        parts = [
+            f"{name} {name}",  # 2x title boost
+            short_title,
+            f"{cats} {cats}",  # 2x category boost
+            sub_cats,
+            tags,
+            f"{beneficiaries} {beneficiaries}",  # 2x beneficiary boost
+            brief_desc,
+            det_desc,
+            benefits,
+            eligibility,
+            docs,
+        ]
+        composite = " ".join(p for p in parts if p).strip()
+        corpus.append(composite if composite else "government scheme")
+    return corpus
+
+
+def get_tfidf_engine():
+    """
+    Initializes and returns the cached TF-IDF vectorizer and matrix.
+    Builds on first call (takes ~1-1.5s once) and serves in-memory for sub-15ms queries.
+    """
+    global _SCHEMES_TFIDF_VECTORIZER, _SCHEMES_TFIDF_MATRIX
+
+    rows = load_schemes()
+    if not rows:
+        return None, None, []
+
+    if _SCHEMES_TFIDF_VECTORIZER is not None and _SCHEMES_TFIDF_MATRIX is not None:
+        return _SCHEMES_TFIDF_VECTORIZER, _SCHEMES_TFIDF_MATRIX, rows
+
+    try:
+        corpus = build_scheme_search_corpus(rows)
+        vectorizer = TfidfVectorizer(
+            max_features=12000,
+            stop_words="english",
+            ngram_range=(1, 2),
+            sublinear_tf=True
+        )
+        matrix = vectorizer.fit_transform(corpus)
+        _SCHEMES_TFIDF_VECTORIZER = vectorizer
+        _SCHEMES_TFIDF_MATRIX = matrix
+        logger.info("TF-IDF Vectorizer initialized successfully with matrix shape: %s", matrix.shape)
+        return _SCHEMES_TFIDF_VECTORIZER, _SCHEMES_TFIDF_MATRIX, rows
+    except Exception as e:
+        logger.error("Failed to build TF-IDF engine: %s", str(e))
+        return None, None, rows
+
+
+# ============================================================
+# MULTI-PARAMETER MANDATORY ELIGIBILITY FILTERING
+# ============================================================
+
+def parse_age_limits(text):
+    """
+    Extracts min_age and max_age from eligibility and description text.
+    Returns (min_age: int | None, max_age: int | None).
+    """
+    if not text:
+        return None, None
+    t = text.lower()
+    min_age, max_age = None, None
+
+    # Pattern: between X and Y years
+    m = re.search(r"between\s+(\d{1,2})\s+(?:to|and|-)\s+(\d{1,2})\s*years?", t)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+
+    # Pattern: age of X to Y years / age group X-Y
+    m = re.search(r"age\s*(?:of|is|group)?\s*[:\-]?\s*(\d{1,2})\s*(?:to|-)\s*(\d{1,2})\s*years?", t)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+
+    # Pattern: X to Y years of age
+    m = re.search(r"(\d{1,2})\s*(?:to|-)\s*(\d{1,2})\s*years?\s*of\s*age", t)
+    if m:
+        return int(m.group(1)), int(m.group(2))
+
+    # Minimum age patterns:
+    # e.g. "at least 18 years", "minimum age 18 years", "above 60 years"
+    m_min1 = re.search(r"(?:minimum age|at least|above|more than|minimum of|attained the age of)\s+(\d{1,2})\s*years?", t)
+    if m_min1:
+        min_age = int(m_min1.group(1))
+
+    # e.g. "60 years of age and above", "60 years and above", "60+ years"
+    m_min2 = re.search(r"(\d{1,2})\s*(?:\+|years?(?:\s+of\s+age)?)\s*(?:and|or)?\s*(?:above|older)", t)
+    if m_min2:
+        val = int(m_min2.group(1))
+        if min_age is None or val > min_age:
+            min_age = val
+
+    # Maximum age patterns:
+    # e.g. "maximum age 45 years", "up to 45 years", "not more than 45 years", "below 45 years"
+    m_max1 = re.search(r"(?:maximum age|up to|not more than|below|less than|maximum of)\s+(\d{1,2})\s*years?", t)
+    if m_max1:
+        max_age = int(m_max1.group(1))
+
+    # e.g. "45 years of age or below", "45 years and below"
+    m_max2 = re.search(r"(\d{1,2})\s*years?(?:\s+of\s+age)?\s*(?:and|or)?\s*(?:below|under|less)", t)
+    if m_max2:
+        val = int(m_max2.group(1))
+        if max_age is None or val < max_age:
+            max_age = val
+
+    # Senior citizen shorthand
+    if not min_age and any(k in t for k in ["senior citizen", "old age pension", "aged 60"]):
+        min_age = 60
+
+    return min_age, max_age
+
+
+def parse_income_limit(text):
+    """
+    Extracts income ceiling from eligibility text in Rupees or BPL status.
+    Returns int limit in INR, 'BPL', or None.
+    """
+    if not text:
+        return None
+    t = text.lower()
+
+    # In Lakhs: e.g. "income should not exceed 2.5 lakhs"
+    m_lakh = re.search(r"(?:income|family income)[^.\n;]{0,50}?(?:less than|below|not exceed|up to|within|maximum of)\s*(?:rs\.?|inr|₹)?\s*(\d+(?:\.\d+)?)\s*(?:lakh|lakhs)", t)
+    if m_lakh:
+        try:
+            return int(float(m_lakh.group(1)) * 100000)
+        except Exception:
+            pass
+
+    # Numeric INR: e.g. "income below Rs. 1,00,000"
+    m_num = re.search(r"(?:income|family income)[^.\n;]{0,50}?(?:less than|below|not exceed|up to|within|maximum of)\s*(?:rs\.?|inr|₹)?\s*([\d,]{4,10})", t)
+    if m_num:
+        digits = re.sub(r"[^\d]", "", m_num.group(1))
+        if digits and int(digits) >= 10000:
+            return int(digits)
+
+    # BPL / Destitute
+    if "below poverty line" in t or " bpl " in f" {t} " or "bpl card" in t:
+        return "BPL"
+
+    return None
+
+
+def check_scheme_eligibility(row, answers):
+    """
+    Evaluates mandatory requirements: State, Gender, Age, Income, and Community.
+
+    Returns:
+    - status: 'eligible' | 'potentially_eligible' | 'ineligible' | 'insufficient_information'
+    - reasons: list of positive match factors
+    - missing_verifications: list of unverified conditions / required documentation
+    """
+    eligibility_text = f"{row.get('eligibility', '')} {row.get('exclusions', '')} {row.get('brief_description', '')}".lower()
+    target_beneficiaries = row.get("target_beneficiaries", "").lower()
+    scheme_title = row.get("scheme_name", "").lower()
+
+    reasons = []
+    missing_verifications = []
+
+    user_state = str(answers.get("state", "")).strip()
+    user_gender = str(answers.get("gender", "")).strip().lower()
+    user_age_str = str(answers.get("age", "")).strip()
+    user_income_str = str(answers.get("income", "")).strip()
+    user_community = str(answers.get("community", "")).strip().lower()
+    user_occupation = str(answers.get("occupation", "")).strip().lower()
+
+    evaluated_rules_count = 0
+
+    # ----------------------------------------------------
+    # 1. State / Geographic Residency Check
+    # ----------------------------------------------------
+    scheme_state = row.get("state", "").strip()
+    scheme_level = row.get("level", "").strip().lower()
+
+    is_central = (
+        scheme_level == "central"
+        or not scheme_state
+        or scheme_state.lower() in ("central", "all india", "india", "pan india", "national")
+    )
+
+    if not is_central and scheme_state:
+        if user_state:
+            evaluated_rules_count += 1
+            if user_state.lower() != scheme_state.lower():
+                return (
+                    "ineligible",
+                    [],
+                    [f"State residency restriction: Scheme is exclusive to {scheme_state}, but user is located in {user_state}."]
+                )
+            else:
+                reasons.append(f"State residency requirement verified ({scheme_state})")
+        else:
+            missing_verifications.append(f"Requires legal residency proof in {scheme_state}")
+    elif is_central:
+        reasons.append("Central / Pan-India scheme accessible across all States and UTs")
+
+    # ----------------------------------------------------
+    # 2. Gender Restriction Check
+    # ----------------------------------------------------
+    is_women_exclusive = (
+        any(k in scheme_title for k in ["widow", "women", "girl", "maternity", "destitute women", "mahila"])
+        or any(k in target_beneficiaries for k in ["women", "girl", "female", "widow", "maternal", "pregnant"])
+        or any(k in eligibility_text for k in ["only women", "for girls only", "women only", "widows only", "pregnant women", "destitute women", "exclusively for women", "destitute widow", "widow pension"])
+    )
+
+    if is_women_exclusive:
+        if user_gender:
+            evaluated_rules_count += 1
+            if user_gender == "male":
+                return (
+                    "ineligible",
+                    [],
+                    ["Gender restriction: This scheme is exclusively reserved for female / women beneficiaries."]
+                )
+            elif user_gender == "female":
+                reasons.append("Dedicated provisions for female beneficiaries fulfilled")
+        else:
+            missing_verifications.append("Requires verification of female beneficiary profile")
+
+    # ----------------------------------------------------
+    # 3. Age Restriction Check
+    # ----------------------------------------------------
+    full_age_search_text = f"{scheme_title} {eligibility_text}"
+    min_age, max_age = parse_age_limits(full_age_search_text)
+    if min_age is not None or max_age is not None:
+        if user_age_str.isdigit():
+            user_age = int(user_age_str)
+            evaluated_rules_count += 1
+            if min_age is not None and user_age < min_age:
+                return (
+                    "ineligible",
+                    [],
+                    [f"Age requirement not met: Scheme requires minimum age of {min_age} years, user age is {user_age}."]
+                )
+            if max_age is not None and user_age > max_age:
+                return (
+                    "ineligible",
+                    [],
+                    [f"Age requirement not met: Scheme requires maximum age of {max_age} years, user age is {user_age}."]
+                )
+            reasons.append(f"Age criteria met ({user_age} years falls within requirement)")
+        else:
+            rule_desc = f"{min_age or ''}{'-' + str(max_age) if max_age else '+'} years"
+            missing_verifications.append(f"Age proof required (Scheme specifies {rule_desc})")
+
+    # ----------------------------------------------------
+    # 4. Income Ceiling Check
+    # ----------------------------------------------------
+    income_limit = parse_income_limit(eligibility_text)
+    if income_limit is not None:
+        if user_income_str.isdigit():
+            user_income = int(user_income_str)
+            evaluated_rules_count += 1
+            if isinstance(income_limit, int) and user_income > income_limit:
+                return (
+                    "ineligible",
+                    [],
+                    [f"Income ceiling exceeded: Scheme requires annual family income <= ₹{income_limit:,}, user income is ₹{user_income:,}."]
+                )
+            reasons.append("Income eligibility requirement fulfilled")
+        else:
+            if isinstance(income_limit, int):
+                missing_verifications.append(f"Income certificate required (ceiling: ₹{income_limit:,}/year)")
+            else:
+                missing_verifications.append("BPL / Below Poverty Line ration card verification required")
+
+    # ----------------------------------------------------
+    # 5. Community / Caste Check
+    # ----------------------------------------------------
+    is_sc_st_exclusive = (
+        any(k in scheme_title for k in ["for sc", "for st", "sc/st", "scheduled caste", "scheduled tribe", "tribal"])
+        or any(k in eligibility_text for k in ["only for scheduled caste", "exclusively for sc", "st candidates only", "belong to the scheduled tribe (st)", "belong to the scheduled caste (sc)"])
+    )
+
+    if is_sc_st_exclusive:
+        if user_community:
+            evaluated_rules_count += 1
+            if user_community in ("general", "obc") and not any(k in eligibility_text for k in ["obc", "general", "all categories"]):
+                return (
+                    "ineligible",
+                    [],
+                    ["Community restriction: Scheme is reserved for SC/ST beneficiaries."]
+                )
+            elif user_community in ("sc", "st"):
+                reasons.append(f"Affirmative social welfare criteria met ({user_community.upper()} community)")
+        else:
+            missing_verifications.append("Community / Caste certificate required for official benefit claim")
+
+    # ----------------------------------------------------
+    # 6. Occupation Alignment Check
+    # ----------------------------------------------------
+    if user_occupation:
+        if user_occupation in ("farmer", "agri_labour") and any(k in eligibility_text or k in target_beneficiaries for k in ["farmer", "cultivator", "land", "crop", "agriculture"]):
+            reasons.append(f"Matches beneficiary occupation: {user_occupation.title()}")
+        elif user_occupation == "student" and any(k in eligibility_text or k in target_beneficiaries for k in ["student", "school", "college", "course", "diploma", "scholarship"]):
+            reasons.append("Student enrollment and educational criteria matched")
+
+    # Document check
+    docs_required = row.get("documents_required", "")
+    if docs_required:
+        first_doc = docs_required.split(";")[0].strip()
+        if first_doc and len(first_doc) < 60:
+            missing_verifications.append(f"Documentation check: {first_doc}")
+
+    # Determine final eligibility status
+    has_any_user_input = bool(user_state or user_gender or user_age_str or user_income_str or user_community or user_occupation)
+    if not has_any_user_input:
+        return (
+            "insufficient_information",
+            reasons,
+            ["User profile details (age, income, state, category) were not provided; verification required."]
+        )
+
+    if missing_verifications:
+        return ("potentially_eligible", reasons, missing_verifications)
+
+    if evaluated_rules_count >= 1:
+        return ("eligible", reasons, [])
+
+    return ("potentially_eligible", reasons, ["Verify scheme-specific guidelines on the official portal."])
+
+
+# ============================================================
+# CATEGORY DEFINITIONS & PROFILE QUESTIONS
+# ============================================================
 
 CATEGORY_MAP = {
     "agriculture": {
         "en": "Agriculture, Rural & Environment",
         "ta": "விவசாயம், கிராமப்புறம் மற்றும் சுற்றுச்சூழல்",
-        "keywords": ["agriculture", "farmer", "farming", "crop", "horticulture", "livestock", "dairy", "fisheries", "rural"]
+        "keywords": ["agriculture", "farmer", "farming", "crop", "horticulture", "livestock", "dairy", "fisheries", "rural", "irrigation", "tractor", "cultivator"]
     },
     "education": {
         "en": "Education & Learning",
         "ta": "கல்வி மற்றும் கற்றல்",
-        "keywords": ["education", "student", "school", "college", "scholarship", "learning", "graduate", "study"]
+        "keywords": ["education", "student", "school", "college", "scholarship", "learning", "graduate", "study", "university", "matric", "stipend"]
     },
     "women_child": {
         "en": "Women and Child / Family Welfare",
         "ta": "பெண்கள், குழந்தைகள் மற்றும் குடும்ப நலம்",
-        "keywords": ["women", "woman", "girl", "child", "mother", "maternity", "pregnant", "family"]
+        "keywords": ["women", "woman", "girl", "child", "mother", "maternity", "pregnant", "family", "widow", "marriage", "destitute", "shg"]
     },
     "employment": {
         "en": "Skills & Employment",
         "ta": "திறன் மற்றும் வேலைவாய்ப்பு",
-        "keywords": ["employment", "job", "skill", "worker", "training", "livelihood", "career"]
+        "keywords": ["employment", "job", "skill", "worker", "training", "livelihood", "career", "vocational", "unemployed", "placement"]
     },
     "business": {
         "en": "Business & Entrepreneurship",
         "ta": "தொழில் மற்றும் தொழில்முனைவு",
-        "keywords": ["business", "entrepreneur", "startup", "enterprise", "msme", "self employment", "trade"]
+        "keywords": ["business", "entrepreneur", "startup", "enterprise", "msme", "self employment", "trade", "mudra", "credit", "industry"]
     },
     "finance": {
         "en": "Banking, Financial Services and Insurance",
         "ta": "வங்கி, நிதிச் சேவைகள் மற்றும் காப்பீடு",
-        "keywords": ["financial", "finance", "loan", "insurance", "bank", "credit", "pension", "assistance"]
+        "keywords": ["financial", "finance", "loan", "insurance", "bank", "credit", "pension", "assistance", "subsidy", "incentive"]
     },
     "housing": {
         "en": "Housing & Shelter",
         "ta": "வீடு மற்றும் குடியிருப்பு",
-        "keywords": ["housing", "house", "home", "shelter", "construction", "pradhan mantri awas"]
+        "keywords": ["housing", "house", "home", "shelter", "construction", "pradhan mantri awas", "residential", "patta", "flat"]
     },
     "health": {
         "en": "Health & Wellness",
         "ta": "சுகாதாரம் மற்றும் நலன்",
-        "keywords": ["health", "medical", "hospital", "disease", "healthcare", "medicine", "ayushman"]
+        "keywords": ["health", "medical", "hospital", "disease", "healthcare", "medicine", "ayushman", "treatment", "clinic", "mediclaim"]
     },
     "senior": {
         "en": "Senior Citizens Welfare",
         "ta": "மூத்த குடிமக்கள் நலம்",
-        "keywords": ["senior", "elderly", "old age", "pension", "social welfare", "aged"]
+        "keywords": ["senior", "elderly", "old age", "pension", "social welfare", "aged", "geriatric", "retirement"]
     },
     "disability": {
         "en": "Differently Abled / Disability Support",
         "ta": "மாற்றுத்திறனாளிகள் நலம் மற்றும் ஆதரவு",
-        "keywords": ["disability", "disabled", "divyang", "differently abled", "assistive"]
+        "keywords": ["disability", "disabled", "divyang", "differently abled", "assistive", "prosthesis", "braille", "hearing"]
     },
     "other": {
         "en": "All Government Schemes",
         "ta": "அனைத்து அரசு நலத்திட்டங்கள்",
-        "keywords": ["citizen", "welfare", "scheme", "government", "benefit"]
+        "keywords": ["citizen", "welfare", "scheme", "government", "benefit", "assistance", "grant"]
     },
 }
 
@@ -205,100 +696,271 @@ QUESTIONS = {
 }
 
 
-def evaluate_scheme_match(row, category_key, answers):
+def split_values(value):
+    if not value:
+        return []
+    return [x.strip() for x in re.split(r"[;|,]", str(value)) if x.strip()]
+
+
+# ============================================================
+# HYBRID RECOMMENDATION ENGINE (TF-IDF + COSINE + FILTER + WEIGHTS)
+# ============================================================
+
+def build_user_query_text(category_key, answers, free_query=""):
     """
-    Evaluate relevance score and compile specific reasons why it matched.
+    Assembles comprehensive user query text from free query, category, and profile details.
+    Expands Tamil terms into English concepts so the TF-IDF engine captures semantic intent.
     """
     category = CATEGORY_MAP.get(category_key, CATEGORY_MAP["other"])
-    
-    row_text = " ".join([
-        row.get("scheme_name", ""),
-        row.get("short_title", ""),
-        row.get("categories", ""),
-        row.get("sub_categories", ""),
-        row.get("tags", ""),
-        row.get("target_beneficiaries", ""),
-        row.get("beneficiary_type", ""),
-        row.get("brief_description", ""),
-        row.get("detailed_description", ""),
-        row.get("benefits", ""),
-        row.get("eligibility", ""),
-        row.get("documents_required", ""),
-    ]).lower()
+    parts = []
 
-    raw_score = 0
-    reasons = []
+    # 1. Stated need / free-text query (highest priority)
+    if free_query and str(free_query).strip():
+        parts.append(str(free_query).strip())
 
-    # 1. Category relevance
-    cat_name = category["en"].lower()
-    if cat_name in row.get("categories", "").lower():
-        raw_score += 10
-        reasons.append(f"Official Category matches: {category['en']}")
-    else:
-        for kw in category["keywords"]:
-            if kw.lower() in row_text:
-                raw_score += 1.5
+    # 2. Selected category and related keywords
+    parts.append(category["en"])
+    parts.extend(category["keywords"][:4])
 
-    # 2. State matching
-    user_state = str(answers.get("state", "")).strip().lower()
-    row_state = str(row.get("state", "")).strip().lower()
-    if user_state:
-        if row_state and row_state == user_state:
-            raw_score += 12
-            reasons.append(f"State specific scheme for {answers.get('state')}")
-        elif row_state in ("central", "all india", "india", "pan india", ""):
-            raw_score += 4
-            reasons.append("Central / Pan-India scheme accessible across states")
-        else:
-            raw_score -= 8
+    # 3. Profile answers
+    occupation = answers.get("occupation", "")
+    if occupation and occupation != "other":
+        parts.append(f"{occupation} welfare beneficiary")
 
-    # 3. Profile factors
-    occupation = str(answers.get("occupation", "")).strip().lower()
-    if occupation and occupation in row_text:
-        raw_score += 3
-        reasons.append(f"Targeted for beneficiary profile: {occupation.title()}")
+    community = answers.get("community", "")
+    if community in ("sc", "st"):
+        parts.append(f"{community} scheduled caste tribal development")
 
-    community = str(answers.get("community", "")).strip().lower()
-    if community in ("sc", "st") and any(x in row_text for x in ["sc", "st", "scheduled caste", "scheduled tribe", "dalit", "tribal"]):
-        raw_score += 3
-        reasons.append(f"Special benefits identified for {community.upper()} community")
+    gender = answers.get("gender", "")
+    if gender == "female":
+        parts.append("women girl mother female empowerment")
 
-    gender = str(answers.get("gender", "")).strip().lower()
-    if gender == "female" and any(x in row_text for x in ["women", "woman", "girl", "female", "maternity", "widow"]):
-        raw_score += 3
-        reasons.append("Dedicated provisions for women beneficiaries")
-
-    # 4. Answers semantic match
+    # 4. Domain specific questions
     for k, v in answers.items():
-        if not v or k in ("state", "district", "age", "income"):
+        if k in ("age", "income", "district", "state", "gender", "occupation", "community"):
             continue
-        v_str = str(v).lower()
-        if len(v_str) > 2 and v_str in row_text:
-            raw_score += 2
+        if v and len(str(v)) > 2 and v != "other":
+            parts.append(str(v))
 
-    # Calibrate to realistic 0-100 percentage
-    if raw_score >= 18:
-        pct = min(98, 85 + int(raw_score * 0.5))
-    elif raw_score >= 10:
-        pct = min(84, 72 + int(raw_score * 0.8))
-    elif raw_score >= 5:
-        pct = min(71, 60 + int(raw_score * 1.5))
-    elif raw_score > 0:
-        pct = max(45, min(59, 45 + int(raw_score * 2.0)))
+    combined = " ".join(parts)
+    return expand_bilingual_query(combined)
+
+
+def compute_category_score(row, category_key):
+    """Computes category alignment score in [0.0, 1.0]."""
+    category = CATEGORY_MAP.get(category_key, CATEGORY_MAP["other"])
+    cat_en = category["en"].lower()
+    row_cats = row.get("categories", "").lower()
+    row_subcats = row.get("sub_categories", "").lower()
+
+    if cat_en in row_cats:
+        return 1.0
+
+    # Keyword match in subcategories or tags
+    for kw in category["keywords"]:
+        if kw.lower() in row_cats or kw.lower() in row_subcats:
+            return 0.65
+
+    return 0.20
+
+
+def compute_state_score(row, user_state):
+    """Computes geographic alignment score in [0.0, 1.0]."""
+    scheme_state = row.get("state", "").strip()
+    scheme_level = row.get("level", "").strip().lower()
+
+    is_central = (
+        scheme_level == "central"
+        or not scheme_state
+        or scheme_state.lower() in ("central", "all india", "india", "pan india", "national")
+    )
+
+    if not user_state:
+        # User did not specify state
+        return 0.70 if is_central else 0.50
+
+    if scheme_state and user_state.lower() == scheme_state.lower():
+        return 1.0
+
+    if is_central:
+        return 0.75
+
+    # State mismatch
+    return 0.0
+
+
+def compute_profile_score(row, answers):
+    """Computes demographic/beneficiary profile alignment score in [0.0, 1.0]."""
+    text = f"{row.get('target_beneficiaries', '')} {row.get('beneficiary_type', '')} {row.get('eligibility', '')} {row.get('tags', '')}".lower()
+
+    score = 0.3  # Base baseline
+    matched_factors = 0
+
+    # Occupation match
+    occ = answers.get("occupation", "").lower()
+    if occ and occ != "other":
+        if occ in text or (occ == "farmer" and any(k in text for k in ["farmer", "cultivator", "agriculture"])):
+            score += 0.30
+            matched_factors += 1
+
+    # Community match
+    comm = answers.get("community", "").lower()
+    if comm in ("sc", "st") and any(k in text for k in ["sc", "st", "scheduled caste", "scheduled tribe", "tribal"]):
+        score += 0.25
+        matched_factors += 1
+
+    # Gender match
+    gender = answers.get("gender", "").lower()
+    if gender == "female" and any(k in text for k in ["women", "woman", "girl", "female", "widow", "maternal"]):
+        score += 0.25
+        matched_factors += 1
+
+    return min(1.0, score)
+
+
+def calculate_hybrid_score(content_sim, category_match, state_match, profile_match, eligibility_status="eligible", weights=None):
+    """
+    Computes weighted hybrid relevance score and breakdown:
+    Relevance = w1*ContentSim + w2*CategoryMatch + w3*StateMatch + w4*ProfileMatch
+    """
+    weights = weights or DEFAULT_WEIGHTS
+    w_content = float(weights.get("content_similarity", DEFAULT_WEIGHTS["content_similarity"]))
+    w_category = float(weights.get("category_match", DEFAULT_WEIGHTS["category_match"]))
+    w_state = float(weights.get("state_match", DEFAULT_WEIGHTS["state_match"]))
+    w_profile = float(weights.get("profile_match", DEFAULT_WEIGHTS["profile_match"]))
+
+    total_w = w_content + w_category + w_state + w_profile
+    if total_w <= 0:
+        total_w = 1.0
+    w_content /= total_w
+    w_category /= total_w
+    w_state /= total_w
+    w_profile /= total_w
+
+    raw_score = (
+        w_content * content_sim
+        + w_category * category_match
+        + w_state * state_match
+        + w_profile * profile_match
+    )
+
+    if eligibility_status == "ineligible":
+        calibrated_pct = int(raw_score * 15)
+        status_note = " [DISQUALIFIED: Mandatory requirement failed]"
     else:
-        pct = 0
+        calibrated_pct = int(min(98, max(30, raw_score * 105)))
+        status_note = ""
 
-    if not reasons and pct > 0:
-        reasons.append(f"General match with {category['en']}")
+    breakdown = {
+        "content_similarity": round(content_sim * 100, 1),
+        "category_match": round(category_match * 100, 1),
+        "state_match": round(state_match * 100, 1),
+        "profile_match": round(profile_match * 100, 1),
+    }
 
-    return pct, reasons
+    explanation = (
+        f"Relevance: {calibrated_pct}% | Content Similarity: {int(content_sim*100)}% (wt {int(w_content*100)}%), "
+        f"Category: {int(category_match*100)}% (wt {int(w_category*100)}%), "
+        f"State: {int(state_match*100)}% (wt {int(w_state*100)}%), "
+        f"Profile: {int(profile_match*100)}% (wt {int(w_profile*100)}%){status_note}"
+    )
+
+    return calibrated_pct, explanation, breakdown
 
 
-def public_scheme(row, score, reasons):
+
+# ============================================================
+# REQUIRED DOCUMENTS CHECKLIST PARSER & ENRICHER
+# ============================================================
+
+DOCUMENT_EXPLANATIONS = [
+    (r'(?i)\b(aadhaar|aadhar|uid)\b', 'Aadhaar Card', 'Biometric identity proof linked with mobile and bank DBT.'),
+    (r'(?i)\b(income|annual\s+income|salary)\b', 'Income Certificate', 'Proof of household annual income issued by revenue authority / Tahsildar.'),
+    (r'(?i)\b(caste|community|tribal|tribe|sc\b|st\b|obc\b|mbc\b)', 'Caste / Community Certificate', 'Proof of social category issued by competent government revenue department.'),
+    (r'(?i)\b(domicile|residence|residential|nativity|address\s+proof|resident)\b', 'Residence / Domicile Proof', 'Verification of permanent residence in the eligible state/taluk.'),
+    (r'(?i)\b(bank|passbook|account\s+details|cancelled\s+cheque|ifsc)\b', 'Bank Passbook / Account Details', 'Active bank account details linked for direct benefit transfer payments.'),
+    (r'(?i)\b(photo|photograph|passport\s*size)\b', 'Passport-size Photographs', 'Recent color passport-size photographs of the applicant.'),
+    (r'(?i)\b(mark\s*sheet|marksheet|educational?|degree|diploma|school|bonafide|matriculation|10th|12th|graduation)\b', 'Educational Certificates / Marksheet', 'Proof of student academic qualifications, enrollment, or grades.'),
+    (r'(?i)\b(ration\s*card|family\s*card|bpl\s*card)\b', 'Ration Card / Family Card', 'Proof of household family composition and food security status.'),
+    (r'(?i)\b(pan\s*card|pan\b)\b', 'PAN Card', 'Permanent Account Number card for identity and financial compliance.'),
+    (r'(?i)\b(birth\s*cert|age\s*proof|dob)\b', 'Birth Certificate / Age Proof', 'Verification of age eligibility issued by municipal/local registrar.'),
+    (r'(?i)\b(disability|pwd|medical|handicapped|physically\s+challenged)\b', 'Disability / Medical Certificate', 'Medical authority certificate confirming disability percentage or condition.'),
+    (r'(?i)\b(patta|chitta|land\s*record|khasra|khatauni|landholding)\b', 'Land Records / Patta', 'Proof of agricultural landholding or ownership document.')
+]
+
+def parse_scheme_documents_checklist(docs_raw):
+    """
+    Parses raw documents_required text from scheme record into structured checklist items.
+    If empty or null, returns has_documents=False with standard required notice.
+    """
+    if not docs_raw or str(docs_raw).strip().lower() in ['', 'nan', 'none', 'null', '[]']:
+        return {
+            "has_documents": False,
+            "items": [],
+            "notice": "Requirements not available—please verify with the official scheme source."
+        }
+
+    raw_items = [x.strip() for x in re.split(r'[;|\n]+', str(docs_raw)) if x.strip()]
+    if len(raw_items) <= 1 and ',' in str(docs_raw) and not any(k in str(docs_raw) for k in ['₹', 'rs.', 'income']):
+        raw_items = [x.strip() for x in re.split(r'[,]+', str(docs_raw)) if x.strip()]
+
+    items = []
+    seen_names = set()
+    for idx, raw in enumerate(raw_items):
+        clean = re.sub(r'^(\d+[\.\)]|[a-zA-Z][\.\)]|[\*\-\•])\s*', '', raw).strip().rstrip('.;,')
+        if not clean or len(clean) < 3:
+            continue
+        if clean.lower() in seen_names:
+            continue
+        seen_names.add(clean.lower())
+
+        name = clean
+        explanation = 'Required verification document specified by the official scheme authority.'
+        for pattern, std_name, std_expl in DOCUMENT_EXPLANATIONS:
+            if re.search(pattern, clean):
+                explanation = std_expl
+                break
+
+        items.append({
+            "id": f"doc_{idx}",
+            "name": name,
+            "explanation": explanation,
+            "raw": raw
+        })
+
+    if not items:
+        return {
+            "has_documents": False,
+            "items": [],
+            "notice": "Requirements not available—please verify with the official scheme source."
+        }
+
+    return {
+        "has_documents": True,
+        "items": items,
+        "notice": None
+    }
+
+
+def format_public_scheme(row, relevance_score, score_explanation, eligibility_status, reasons, missing_verifications, score_breakdown=None):
+    """Builds user-facing response payload for a single recommended scheme."""
+    status_labels = {
+        "eligible": "Eligible — Meets Profile Criteria",
+        "potentially_eligible": "Potentially Eligible — Verification Needed",
+        "ineligible": "Ineligible — Mandatory Requirement Failed",
+        "insufficient_information": "Profile Verification Required",
+    }
+    status_label_ta = {
+        "eligible": "தகுதியானது — தகுதி விதிகள் பொருந்துகின்றன",
+        "potentially_eligible": "சாத்தியமான தகுதி — சரிபார்ப்பு தேவை",
+        "ineligible": "தகுதியற்றது — கட்டாய நிபந்தனை பொருந்தவில்லை",
+        "insufficient_information": "விவரங்களை சரிபார்க்கவும்",
+    }
+
     return {
         "name": row.get("scheme_name", "Unnamed scheme"),
         "short_title": row.get("short_title", ""),
-        "state": row.get("state", "Central / All India"),
+        "state": row.get("state", "Central / All India") or "Central / All India",
         "level": row.get("level", ""),
         "department": row.get("department", "Government Department"),
         "category": row.get("categories", ""),
@@ -307,24 +969,160 @@ def public_scheme(row, score, reasons):
         "benefits": split_values(row.get("benefits", ""))[:5],
         "eligibility": split_values(row.get("eligibility", ""))[:6],
         "documents": split_values(row.get("documents_required", ""))[:8],
-        "application_mode": row.get("application_mode", ""),
+        "documents_checklist": parse_scheme_documents_checklist(row.get("documents_required", "")),
+        "application_mode": row.get("application_mode", "Online / Offline"),
         "source_url": row.get("source_url", ""),
-        "match_score": score,
-        "reasons": reasons[:3],
-        "status_label": "Possible Match — Verify Official Eligibility"
+        "relevance_score": relevance_score,
+        "match_score": relevance_score,  # Alias for backward UI compatibility
+        "score_explanation": score_explanation,
+        "score_breakdown": score_breakdown or {},
+        "eligibility_status": eligibility_status,
+        "status_label": status_labels.get(eligibility_status, "Possible Match"),
+        "status_label_ta": status_label_ta.get(eligibility_status, "சாத்தியமான தகுதி"),
+        "reasons": reasons[:4],
+        "missing_verifications": missing_verifications[:3],
     }
 
 
+def recommend_schemes(category_key, answers=None, free_query="", limit=25, weights=None):
+    """
+    Executes the Hybrid Recommendation Algorithm:
+    1. Mandatory Eligibility Filtering (State, Gender, Age, Income, Community)
+    2. TF-IDF vectorization & Cosine Similarity for semantic query alignment
+    3. Multi-criteria Weighted Ranking
+    4. Sorting, validation & explanation generation
+    """
+    answers = answers or {}
+    weights = weights or DEFAULT_WEIGHTS
+
+    vectorizer, matrix, rows = get_tfidf_engine()
+    if not rows:
+        return []
+
+    # 1. Compute TF-IDF Cosine Similarities across all schemes
+    query_text = build_user_query_text(category_key, answers, free_query)
+    cosine_sims = None
+    if vectorizer and matrix is not None:
+        try:
+            q_vec = vectorizer.transform([query_text])
+            cosine_sims = cosine_similarity(q_vec, matrix)[0]
+        except Exception as e:
+            logger.warning("TF-IDF transform failed: %s", str(e))
+            cosine_sims = None
+
+    user_state = answers.get("state", "")
+
+    candidates = []
+
+    # 2. Iterate through candidate schemes and evaluate components
+    for idx, row in enumerate(rows):
+        content_sim = float(cosine_sims[idx]) if cosine_sims is not None else 0.0
+        cat_score = compute_category_score(row, category_key)
+        state_score = compute_state_score(row, user_state)
+        profile_score = compute_profile_score(row, answers)
+
+        # 3. Mandatory Eligibility Check
+        elig_status, elig_reasons, missing_verifs = check_scheme_eligibility(row, answers)
+
+        # Positive reasons aggregation
+        all_reasons = []
+        if cat_score >= 0.9:
+            all_reasons.append(f"Official category matches: {CATEGORY_MAP.get(category_key, {}).get('en', 'Domain')}")
+        all_reasons.extend(elig_reasons)
+        if content_sim >= 0.35:
+            all_reasons.append("High semantic match with your stated needs")
+
+        # 4. Weighted Ranking Calculation
+        calibrated_pct, explanation, breakdown = calculate_hybrid_score(
+            content_sim=content_sim,
+            category_match=cat_score,
+            state_match=state_score,
+            profile_match=profile_score,
+            eligibility_status=elig_status,
+            weights=weights
+        )
+
+        # Keep eligible or relevant candidates
+        # Threshold: calibrated_pct >= 40 for eligible/potential schemes
+        if elig_status != "ineligible" and calibrated_pct >= 40:
+            candidates.append((
+                calibrated_pct,
+                elig_status,
+                row,
+                explanation,
+                all_reasons,
+                missing_verifs,
+                breakdown
+            ))
+
+    # 5. Sort: confirmed eligible first, then potentially eligible, ordered by highest relevance score
+    status_priority = {
+        "eligible": 3,
+        "potentially_eligible": 2,
+        "insufficient_information": 1,
+        "ineligible": 0
+    }
+    candidates.sort(
+        key=lambda x: (
+            status_priority.get(x[1], 0),
+            x[0],  # relevance_score
+            x[2].get("scheme_name", "")
+        ),
+        reverse=True
+    )
+
+    results = [
+        format_public_scheme(
+            row=item[2],
+            relevance_score=item[0],
+            score_explanation=item[3],
+            eligibility_status=item[1],
+            reasons=item[4],
+            missing_verifications=item[5],
+            score_breakdown=item[6]
+        )
+        for item in candidates[:limit]
+    ]
+
+    return results
+
+
+# Aliases for backward compatibility and test imports
+load_schemes_dataset = load_schemes
+CATEGORIES = CATEGORY_MAP
+
+
+# ============================================================
+# FLASK BLUEPRINT ROUTES
+# ============================================================
+
 @scheme_bp.route("/", methods=["GET"])
 def scheme_home():
-    return render_template("schemes.html", categories=CATEGORY_MAP, profile_questions=PROFILE_QUESTIONS)
+    return render_template(
+        "schemes.html",
+        categories=CATEGORY_MAP,
+        profile_questions=PROFILE_QUESTIONS,
+        default_weights=DEFAULT_WEIGHTS,
+        weight_descriptions=WEIGHT_DESCRIPTIONS
+    )
+
+
+@scheme_bp.route("/api/weights", methods=["GET"])
+def scheme_weights():
+    return jsonify({
+        "success": True,
+        "weights": DEFAULT_WEIGHTS,
+        "descriptions": WEIGHT_DESCRIPTIONS,
+        "disclaimer": "Scores represent algorithmic relevance indicators based on user inputs, not official government eligibility determinations."
+    })
 
 
 @scheme_bp.route("/api/questions/<category>", methods=["GET"])
 def scheme_questions(category):
     if category not in CATEGORY_MAP:
-        return jsonify({"error": "Unknown category"}), 400
+        return jsonify({"success": False, "error": "Unknown category"}), 400
     return jsonify({
+        "success": True,
         "category": category,
         "questions": QUESTIONS.get(category, [])
     })
@@ -335,30 +1133,50 @@ def scheme_match():
     data = request.get_json(silent=True) or {}
     category = data.get("category", "")
     answers = data.get("answers", {}) or {}
+    free_query = data.get("query", "") or data.get("search", "")
+    custom_weights = data.get("weights", None)
 
     if category not in CATEGORY_MAP:
-        return jsonify({"error": "Please select a valid category."}), 400
+        return jsonify({"success": False, "error": "Please select a valid support domain category."}), 400
 
     rows = load_schemes()
     if not rows:
         return jsonify({
+            "success": False,
             "error": "Scheme database was not found. Please ensure schemes.csv.xls is present in the project directory."
         }), 500
 
-    scored = []
-    for row in rows:
-        pct_score, reasons = evaluate_scheme_match(row, category, answers)
-        if pct_score >= 45:
-            scored.append((pct_score, reasons, row))
-
-    scored.sort(key=lambda x: (-x[0], x[2].get("scheme_name", "")))
-
-    results = [public_scheme(row, score, reasons) for score, reasons, row in scored[:25]]
+    results = recommend_schemes(
+        category_key=category,
+        answers=answers,
+        free_query=free_query,
+        limit=25,
+        weights=custom_weights
+    )
 
     return jsonify({
+        "success": True,
         "count": len(results),
         "results": results,
-        "disclaimer": "Possible Match — Verify Official Eligibility",
-        "message": "These schemes may be relevant based on the answers provided.",
-        "note": "This is preliminary matching only. Eligibility is not confirmed. Check the official scheme source for current rules and documents."
+        "algorithm": "Hybrid Recommendation (Mandatory Eligibility Filtering + TF-IDF Vectorization + Cosine Similarity + Weighted Ranking)",
+        "weights_used": custom_weights or DEFAULT_WEIGHTS,
+        "disclaimer": "Possible Match — Verify Official Eligibility. Preliminary matching only. Always verify current criteria, deadlines, and required documentation with the official issuing authority.",
+        "message": f"Found {len(results)} relevant government scheme{'s' if len(results) != 1 else ''} matching your profile.",
+        "note": "Relevance scores reflect algorithmic alignment with your profile and stated needs. Official eligibility must be verified on government portals."
     })
+
+
+@scheme_bp.route("/api/checklist/<int:scheme_index>", methods=["GET"])
+def scheme_checklist_api(scheme_index):
+    """Returns checklist payload for a scheme by cached index."""
+    schemes = load_schemes()
+    if 0 <= scheme_index < len(schemes):
+        s = schemes[scheme_index]
+        checklist = parse_scheme_documents_checklist(s.get("documents_required", ""))
+        return jsonify({
+            "success": True,
+            "scheme_name": s.get("scheme_name", ""),
+            "source_url": s.get("source_url", ""),
+            "checklist": checklist
+        })
+    return jsonify({"success": False, "error": "Scheme index out of range"}), 404

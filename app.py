@@ -5,9 +5,11 @@ Main Flask Application
 
 import os
 import io
+import re
 import time
 import json
 import uuid
+import logging
 from flask import (
     Flask, render_template, request, redirect, url_for,
     session, flash, send_from_directory, send_file, jsonify, make_response
@@ -20,6 +22,7 @@ from auth_system import (
     save_document_history, get_user_history, get_history_entry, delete_history_entry
 )
 from scheme_recommendation import scheme_bp
+from voice_assistant import voice_bp, register_result_getter
 from readability_analyzer import analyze_readability
 from ocr_pipeline import process_image_file, process_pdf_file, OCR_LANGUAGE, HAS_TAMIL
 from document_classifier import classify_document, extract_general_fields, build_fields_i18n, DOCUMENT_TYPES
@@ -40,6 +43,7 @@ app.config["SECRET_KEY"] = os.environ.get(
 # Register Blueprints
 app.register_blueprint(scheme_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(voice_bp)
 
 # Initialize Database
 init_auth_db()
@@ -57,6 +61,92 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB limit
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf"}
 
+# Configure minimal server-side logging for upload auditing and debugging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger("govease.upload")
+
+def normalize_extension(filename):
+    """Safely extracts and normalizes the file extension in lowercase with whitespace trimmed."""
+    if not filename or "." not in filename:
+        return ""
+    cleaned = filename.strip()
+    parts = cleaned.rsplit(".", 1)
+    if len(parts) < 2:
+        return ""
+    return parts[1].strip().lower()
+
+def allowed_file(filename):
+    """Checks whether the filename has a supported extension (case-insensitive, whitespace trimmed)."""
+    return normalize_extension(filename) in ALLOWED_EXTENSIONS
+
+def get_safe_display_name(filename, ext):
+    """
+    Returns a sanitized display filename for UI and database history.
+    Preserves Unicode / Tamil characters, spaces, and numbers while stripping control characters.
+    """
+    if not filename:
+        return f"document.{ext}"
+    cleaned = filename.strip()
+    cleaned = os.path.basename(cleaned.replace("\\", "/"))
+    # Remove null bytes and ASCII control characters, preserving Unicode letters
+    cleaned = re.sub(r"[\x00-\x1f\x7f]", "", cleaned)
+    if not cleaned:
+        return f"document.{ext}"
+    return cleaned
+
+def validate_uploaded_file(file_storage):
+    """
+    Performs comprehensive multi-layer file validation:
+    1. Checks if a file is attached and filename is non-empty.
+    2. Validates extension against ALLOWED_EXTENSIONS (case-insensitively, whitespace trimmed).
+    3. Handles spaces and Unicode / non-English filenames safely.
+    4. Validates magic bytes / content structure to detect extension mismatch.
+    5. Detects empty files (0 bytes).
+    6. Does not reject valid PDFs whose browser MIME type is application/octet-stream.
+
+    Returns: (is_valid: bool, error_message: str | None, normalized_ext: str, display_filename: str)
+    """
+    if not file_storage or not file_storage.filename or file_storage.filename.strip() == "":
+        return False, "Please select a valid document file (JPG, PNG, or PDF).", "", ""
+
+    raw_name = file_storage.filename.strip()
+    base_name = os.path.basename(raw_name.replace("\\", "/"))
+    ext = normalize_extension(base_name)
+    display_name = get_safe_display_name(base_name, ext if ext else "dat")
+
+    if not ext or ext not in ALLOWED_EXTENSIONS:
+        err = (
+            f"Unsupported file format (.{ext if ext else 'unknown'}). "
+            "Please upload a document in PDF (.pdf), JPEG (.jpg, .jpeg), or PNG (.png) format."
+        )
+        return False, err, ext, display_name
+
+    # Read content header for magic byte verification
+    try:
+        header = file_storage.read(2048)
+        file_storage.seek(0)
+    except Exception as e:
+        return False, f"Could not read uploaded file stream: {str(e)}", ext, display_name
+
+    if len(header) == 0:
+        return False, "The uploaded file is empty (0 bytes). Please upload a valid document.", ext, display_name
+
+    # Content signature verification to prevent extension mismatch/spoofing
+    if ext == "pdf":
+        if b"%PDF-" not in header[:1024]:
+            return False, "File content does not match the .pdf extension. The file is not a valid PDF document.", ext, display_name
+    elif ext in {"jpg", "jpeg"}:
+        if not header.startswith(b"\xff\xd8\xff"):
+            return False, "File content does not match the JPEG image extension. The file is not a valid JPEG image.", ext, display_name
+    elif ext == "png":
+        if not header.startswith(b"\x89PNG\r\n\x1a\n"):
+            return False, "File content does not match the PNG image extension. The file is not a valid PNG image.", ext, display_name
+
+    return True, None, ext, display_name
+
 # Server-side cache for current active document results (prevents cookie overflow)
 _ACTIVE_RESULTS = {}
 
@@ -72,8 +162,8 @@ def get_current_result():
             return entry.get("result", {})
     return None
 
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+# Register result getter for Voice Assistant context
+register_result_getter(get_current_result)
 
 
 # ============================================================
@@ -112,39 +202,60 @@ def index():
     result = None
 
     if request.method == "POST":
+        logger.info("Upload request received")
         if "file" not in request.files:
             error = "No document file was selected. Please choose a file to upload."
+            logger.warning("Upload validation failed: 'file' key missing in request.files")
             return render_template("index.html", error=error, result=None)
 
         file = request.files["file"]
+        raw_filename = getattr(file, "filename", "") or ""
+        content_type = getattr(file, "content_type", "") or ""
+        logger.info("Upload file received: raw_filename='%s', content_type='%s'", raw_filename, content_type)
 
-        if not file or file.filename.strip() == "":
-            error = "Please select a valid document file (JPG, PNG, or PDF)."
-            return render_template("index.html", error=error, result=None)
+        is_valid, val_error, ext, display_filename = validate_uploaded_file(file)
+        if not is_valid:
+            logger.warning("Upload validation failed for '%s': %s", raw_filename, val_error)
+            return render_template("index.html", error=val_error, result=None)
 
-        if not allowed_file(file.filename):
-            error = "Unsupported file type. Please upload a scanned document or image in JPG, JPEG, PNG, or PDF format."
-            return render_template("index.html", error=error, result=None)
+        logger.info("Upload validation successful: display_filename='%s', ext='%s'", display_filename, ext)
 
-        raw_filename = secure_filename(file.filename)
+        # Unique server-side filename prevents overwriting and race conditions
         timestamp = int(time.time())
-        unique_filename = f"{timestamp}_{raw_filename}"
-        upload_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+        unique_token = uuid.uuid4().hex[:12]
+        unique_server_filename = f"{timestamp}_{unique_token}.{ext}"
+        upload_path = os.path.join(UPLOAD_FOLDER, unique_server_filename)
 
         try:
             file.save(upload_path)
-            extension = raw_filename.rsplit(".", 1)[1].lower()
+            if not os.path.exists(upload_path) or os.path.getsize(upload_path) == 0:
+                raise IOError("Uploaded file could not be saved to disk or is empty.")
+            logger.info("File successfully saved: '%s' (%d bytes)", upload_path, os.path.getsize(upload_path))
 
             # 1. OCR Extraction (Images & PDFs)
-            if extension == "pdf":
-                ocr_data = process_pdf_file(upload_path, raw_filename, PROCESSED_FOLDER)
+            if ext == "pdf":
+                ocr_data = process_pdf_file(upload_path, display_filename, PROCESSED_FOLDER)
+                logger.info(
+                    "PDF extraction successful: pages=%d, text_len=%d, confidence=%.1f%%, quality=%s",
+                    ocr_data.get("total_pages", 1),
+                    len(ocr_data.get("text", "")),
+                    ocr_data.get("confidence", 0.0),
+                    ocr_data.get("quality", "N/A")
+                )
             else:
-                ocr_data = process_image_file(upload_path, raw_filename, PROCESSED_FOLDER)
+                ocr_data = process_image_file(upload_path, display_filename, PROCESSED_FOLDER)
+                logger.info(
+                    "Image OCR successful: text_len=%d, confidence=%.1f%%, quality=%s",
+                    len(ocr_data.get("text", "")),
+                    ocr_data.get("confidence", 0.0),
+                    ocr_data.get("quality", "N/A")
+                )
 
             extracted_text = ocr_data["text"]
 
             if not extracted_text or len(extracted_text.strip()) < 10:
                 error = "Could not extract readable text from the document. Please ensure the document is clear, well-lit, and not overly blurry."
+                logger.warning("Extraction warning for '%s': insufficient readable text (len=%d)", display_filename, len(extracted_text.strip()) if extracted_text else 0)
                 return render_template("index.html", error=error, result=None)
 
             # 2. Document Classification
@@ -175,7 +286,7 @@ def index():
             summary = summarize_document(extracted_text, doc_type, fields)
 
             result = {
-                "filename": raw_filename,
+                "filename": display_filename,
                 "text": extracted_text,
                 "confidence": ocr_data["confidence"],
                 "quality": ocr_data["quality"],
@@ -200,7 +311,7 @@ def index():
             if user:
                 history_id = save_document_history(
                     user_id=user["id"],
-                    filename=raw_filename,
+                    filename=display_filename,
                     document_type=doc_type,
                     document_type_ta=doc_type_ta,
                     confidence=ocr_data["confidence"],
@@ -215,9 +326,10 @@ def index():
             token = str(uuid.uuid4())
             _ACTIVE_RESULTS[token] = result
             session["doc_token"] = token
+            logger.info("Processing complete and active token generated for '%s'", display_filename)
 
         except Exception as exc:
-            print("PROCESSING ERROR:", exc)
+            logger.error("Processing error for '%s': %s", display_filename, str(exc))
             error = f"Document processing failed: {str(exc)}. Please check the file and try again."
 
     return render_template("index.html", error=error, result=result)

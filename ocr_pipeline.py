@@ -6,6 +6,8 @@ multi-variant OCR (tam+eng), and comprehensive PDF (scanned & digital) handling.
 
 import os
 import re
+import time
+import uuid
 import cv2
 import numpy as np
 import pytesseract
@@ -327,13 +329,20 @@ def process_image_file(image_path, original_filename, processed_folder):
         best_version = "Grayscale"
         best_psm = 6
 
-    # Save processed image preview
-    base_name = os.path.splitext(os.path.basename(original_filename))[0]
-    safe_base = re.sub(r"[^A-Za-z0-9_.-]", "_", base_name)
-    processed_filename = f"{safe_base}_processed.jpg"
-    processed_path = os.path.join(processed_folder, processed_filename)
+    # Save processed image preview safely with unique filename
+    preview_filename = f"preview_{int(time.time())}_{uuid.uuid4().hex[:8]}.jpg"
+    processed_path = os.path.join(processed_folder, preview_filename)
 
-    cv2.imwrite(processed_path, processed_image)
+    processed_filename = None
+    if processed_image is not None:
+        try:
+            success, enc_img = cv2.imencode(".jpg", processed_image)
+            if success:
+                with open(processed_path, "wb") as f_out:
+                    f_out.write(enc_img)
+                processed_filename = preview_filename
+        except Exception:
+            processed_filename = None
 
     quality, warning = get_quality_rating(best_conf, len(best_text))
 
@@ -353,73 +362,106 @@ def process_pdf_file(pdf_path, original_filename, processed_folder):
     """
     Handle PDFs: supports both text-based PDFs and scanned multi-page PDFs
     by converting pages to image pixmaps when embedded text is absent.
+    Safely opens, processes, and closes document handles.
     """
     if fitz is None:
         raise RuntimeError("PyMuPDF (fitz) is not installed.")
 
-    doc = fitz.open(pdf_path)
-    total_pages = len(doc)
-    
-    extracted_text_pages = []
-    first_page_image = None
-    all_confidences = []
-    is_scanned = False
+    if not os.path.exists(pdf_path):
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
-    for page_idx in range(min(total_pages, 8)):
-        page = doc[page_idx]
-        direct_text = page.get_text().strip()
+    if os.path.getsize(pdf_path) == 0:
+        raise ValueError("The uploaded PDF is empty (0 bytes).")
 
-        # Render page 1 as preview image
-        if page_idx == 0:
-            pix = page.get_pixmap(dpi=150)
-            # Convert pixmap to numpy array
-            img_data = np.frombuffer(pix.samples, dtype=np.uint8).reshape((pix.height, pix.width, pix.n))
-            if pix.n == 4:
-                first_page_image = cv2.cvtColor(img_data, cv2.COLOR_RGBA2BGR)
-            elif pix.n == 3:
-                first_page_image = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)
+    try:
+        doc = fitz.open(pdf_path)
+    except Exception as open_err:
+        err_str = str(open_err).lower()
+        if "empty" in err_str:
+            raise ValueError("The uploaded PDF is empty (0 bytes).")
+        raise ValueError("The uploaded PDF appears to be corrupted or invalid and could not be opened.")
+
+    try:
+        if getattr(doc, "is_encrypted", False):
+            if not doc.authenticate(""):
+                raise ValueError("The uploaded PDF is password-protected. Please upload an unprotected document.")
+
+        total_pages = len(doc)
+        if total_pages == 0:
+            raise ValueError("The uploaded PDF contains no pages.")
+
+        extracted_text_pages = []
+        first_page_image = None
+        all_confidences = []
+        is_scanned = False
+
+        pages_to_process = min(total_pages, 8)
+        for page_idx in range(pages_to_process):
+            page = doc[page_idx]
+            direct_text = page.get_text().strip()
+
+            # Render page 1 as preview image
+            if page_idx == 0:
+                try:
+                    pix = page.get_pixmap(dpi=150)
+                    img_data = np.frombuffer(pix.samples, dtype=np.uint8).reshape((pix.height, pix.width, pix.n))
+                    if pix.n == 4:
+                        first_page_image = cv2.cvtColor(img_data, cv2.COLOR_RGBA2BGR)
+                    elif pix.n == 3:
+                        first_page_image = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)
+                    else:
+                        first_page_image = cv2.cvtColor(img_data, cv2.COLOR_GRAY2BGR)
+                except Exception:
+                    first_page_image = None
+
+            # If direct text exists and has substantial content
+            if len(direct_text) > 40:
+                extracted_text_pages.append(direct_text)
+                all_confidences.append(95.0)
             else:
-                first_page_image = cv2.cvtColor(img_data, cv2.COLOR_GRAY2BGR)
+                # Scanned page - render to high-res image and OCR
+                is_scanned = True
+                try:
+                    pix_high = page.get_pixmap(dpi=220)
+                    img_data = np.frombuffer(pix_high.samples, dtype=np.uint8).reshape((pix_high.height, pix_high.width, pix_high.n))
+                    if pix_high.n >= 3:
+                        cv_img = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR if pix_high.n == 3 else cv2.COLOR_RGBA2BGR)
+                    else:
+                        cv_img = cv2.cvtColor(img_data, cv2.COLOR_GRAY2BGR)
 
-        # If direct text exists and has substantial content
-        if len(direct_text) > 40:
-            extracted_text_pages.append(direct_text)
-            all_confidences.append(95.0)
-        else:
-            # Scanned page - render to high-res image and OCR
-            is_scanned = True
-            pix_high = page.get_pixmap(dpi=220)
-            img_data = np.frombuffer(pix_high.samples, dtype=np.uint8).reshape((pix_high.height, pix_high.width, pix_high.n))
-            if pix_high.n >= 3:
-                cv_img = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR if pix_high.n == 3 else cv2.COLOR_RGBA2BGR)
-            else:
-                cv_img = cv2.cvtColor(img_data, cv2.COLOR_GRAY2BGR)
+                    variants = create_ocr_variants(cv_img)
+                    text_p, conf_p = run_single_ocr(variants["CLAHE"], 6)
+                    if not text_p or len(text_p.strip()) < 10:
+                        text_p, conf_p = run_single_ocr(variants["Adaptive"], 4)
 
-            variants = create_ocr_variants(cv_img)
-            text_p, conf_p = run_single_ocr(variants["CLAHE"], 6)
-            if not text_p or len(text_p.strip()) < 10:
-                text_p, conf_p = run_single_ocr(variants["Adaptive"], 4)
-            
-            cleaned_p = clean_ocr_text(text_p)
-            if cleaned_p:
-                extracted_text_pages.append(cleaned_p)
-                all_confidences.append(conf_p)
+                    cleaned_p = clean_ocr_text(text_p)
+                    if cleaned_p:
+                        extracted_text_pages.append(cleaned_p)
+                        all_confidences.append(conf_p)
+                    else:
+                        all_confidences.append(0.0)
+                except Exception:
+                    all_confidences.append(0.0)
+    finally:
+        doc.close()
 
-    doc.close()
-
-    full_pdf_text = "\n\n--- Page Break ---\n\n".join(extracted_text_pages)
+    full_pdf_text = "\n\n--- Page Break ---\n\n".join(extracted_text_pages).strip()
     overall_conf = (sum(all_confidences) / len(all_confidences)) if all_confidences else 0.0
 
-    # Save page 1 preview image
-    base_name = os.path.splitext(os.path.basename(original_filename))[0]
-    safe_base = re.sub(r"[^A-Za-z0-9_.-]", "_", base_name)
-    processed_filename = f"{safe_base}_pdf_preview.jpg"
-    processed_path = os.path.join(processed_folder, processed_filename)
+    # Save page 1 preview image safely with unique filename
+    preview_filename = f"preview_{int(time.time())}_{uuid.uuid4().hex[:8]}.jpg"
+    processed_path = os.path.join(processed_folder, preview_filename)
 
+    processed_filename = None
     if first_page_image is not None:
-        cv2.imwrite(processed_path, first_page_image)
-    else:
-        processed_filename = None
+        try:
+            success, enc_img = cv2.imencode(".jpg", first_page_image)
+            if success:
+                with open(processed_path, "wb") as f_out:
+                    f_out.write(enc_img)
+                processed_filename = preview_filename
+        except Exception:
+            processed_filename = None
 
     quality, warning = get_quality_rating(overall_conf, len(full_pdf_text))
 
